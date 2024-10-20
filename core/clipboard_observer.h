@@ -1,12 +1,12 @@
 #pragma once
-#include <string_view>
+#include <string>
 
 namespace reclip {
 
 class ClipboardObserver {
   public:
     virtual ~ClipboardObserver() = default;
-    virtual void OnTextUpdated(std::string_view value) = 0;
+    virtual void OnTextUpdated(const std::string& value) = 0;
 };
 
 }  // namespace reclip

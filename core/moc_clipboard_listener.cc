@@ -4,21 +4,21 @@
 #include <cassert>
 
 namespace reclip {
-void MocClipboardListener::EmulateTextCopy(std::string_view value) {
-    for (auto& observer : observers_) {
-        observer->OnTextUpdated(value);
-    }
+void MocClipboardListener::EmulateTextCopy(const std::string& value) {
+  for (auto& observer : observers_) {
+    observer->OnTextUpdated(value);
+  }
 }
 
-void MocClipboardListener::AddObserver(
-    const std::shared_ptr<ClipboardObserver>& observer) {
-    assert(observer);
-    observers_.push_back(observer);
+void MocClipboardListener::AddObserver(ClipboardObserver& observer) {
+  if (std::find(observers_.begin(), observers_.end(), &observer) ==
+      observers_.end()) {
+    observers_.push_back(&observer);
+  }
 }
 
-void MocClipboardListener::RemoveObserver(
-    const std::shared_ptr<ClipboardObserver>& observer) {
-    observers_.erase(std::find(observers_.begin(), observers_.end(), observer));
+void MocClipboardListener::RemoveObserver(ClipboardObserver& observer) {
+  observers_.erase(std::find(observers_.begin(), observers_.end(), &observer));
 }
 
 }  // namespace reclip

@@ -1,23 +1,26 @@
+#pragma once
+#include <QClipboard>
+#include <QObject>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "core/clipboard_listener.h"
-#include "core/clipboard_observer.h"
 
 namespace reclip {
 
-// TODO: unused right now
-#if 0
-class MocClipboardListener : public ClipboardListener {
+class ClipboardListenerMac : public QObject, public ClipboardListener {
+  Q_OBJECT
  public:
-  void EmulateTextCopy(const std::string& value);
+  ClipboardListenerQt();
   void AddObserver(ClipboardObserver& observer) override;
   void RemoveObserver(ClipboardObserver& observer) override;
 
+ private slots:
+  void ClipboardTextChanged();
+
  private:
   std::vector<ClipboardObserver*> observers_;
+  QClipboard* clipboard_;
 };
-#endif
 
 }  // namespace reclip
