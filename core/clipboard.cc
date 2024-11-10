@@ -1,9 +1,9 @@
-#include "core/clipboard_listener.h"
+#include "core/clipboard.h"
 
 #ifdef __APPLE__
-  #include "core/clipboard_listener_mac.h"
+#include "core/clipboard_mac.h"
 #else
-  #include "core/clipboard_listener_qt.h"
+#include "core/clipboard_qt.h"
 #endif
 
 namespace reclip {

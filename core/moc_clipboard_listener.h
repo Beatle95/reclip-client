@@ -2,14 +2,14 @@
 #include <string>
 #include <vector>
 
-#include "core/clipboard_listener.h"
+#include "core/clipboard.h"
 #include "core/clipboard_observer.h"
 
 namespace reclip {
 
 // TODO: unused right now
 #if 0
-class MocClipboardListener : public ClipboardListener {
+class MocClipboard : public Clipboard {
  public:
   void EmulateTextCopy(const std::string& value);
   void AddObserver(ClipboardObserver& observer) override;

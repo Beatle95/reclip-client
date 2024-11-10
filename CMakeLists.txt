@@ -9,19 +9,20 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     add_compile_options(-fno-exceptions -Wall -Wextra -Wpedantic -Werror)
+    add_executable(${PROJECT_NAME} MACOSX_BUNDLE main.cc)
 else ()
     message(FATAL_ERROR "Not implemented")
 endif()
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
 # main targets
-add_executable(${PROJECT_NAME} main.cc)
 add_library(reclip_core null.cc)
+add_library(reclip_ui null.cc)
 # main targets
 
 # unit_tests
@@ -35,6 +36,19 @@ add_test(NAME unit_tests COMMAND unit_tests)
 target_link_libraries(
     ${PROJECT_NAME} PRIVATE
     reclip_core
+    reclip_ui
+)
+target_link_libraries(
+    reclip_core PUBLIC
+    reclip_ui # TODO: remove circular dep
+    Qt6::Core
+    Qt6::Gui
+)
+target_link_libraries(
+    reclip_ui PUBLIC
+    reclip_core
+    Qt6::Core
+    Qt6::Widgets
 )
 
 add_subdirectory(third_party)

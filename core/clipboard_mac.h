@@ -5,18 +5,17 @@
 #include <memory>
 #include <vector>
 
-#include "core/clipboard_listener.h"
+#include "core/clipboard.h"
 
 namespace reclip {
 
-class ClipboardListenerMac : public QObject, public ClipboardListener {
+class ClipboardMac : public QObject, public Clipboard {
   Q_OBJECT
  public:
-  ClipboardListenerMac();
+  ClipboardMac();
+  void WriteText(const std::string& text) override;
   void Start() override;
   void Stop() override;
-  void AddObserver(ClipboardObserver& observer) override;
-  void RemoveObserver(ClipboardObserver& observer) override;
 
  private slots:
   void CheckTimerTimeout();

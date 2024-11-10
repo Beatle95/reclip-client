@@ -1,4 +1,4 @@
-#include "core/application_main.h"
+#include "core/application_main.cc"
 
 using namespace reclip;
 

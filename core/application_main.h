@@ -1,22 +1,28 @@
 #pragma once
-#include <QGuiApplication>
+#include <QApplication>
 #include <memory>
 
 namespace reclip {
 
-class ClipboardListener;
+class ContentWindow;
+class Clipboard;
 class ClipboardModel;
 class Server;
 
-class ApplicationMain : public QGuiApplication {
+class ApplicationMain : public QApplication {
+  Q_OBJECT
  public:
   ApplicationMain(int argc, char** argv);
   ~ApplicationMain();
 
  private:
-  std::unique_ptr<ClipboardListener> clipboard_listener_;
+  void ShowUi();
+  void HideUi();
+
+  std::unique_ptr<Clipboard> clipboard_listener_;
   std::unique_ptr<ClipboardModel> client_;
   std::unique_ptr<Server> server_;
+  std::unique_ptr<ContentWindow> view_;
 };
 
 }  // namespace reclip
