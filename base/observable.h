@@ -2,7 +2,6 @@
 #include <cassert>
 #include <vector>
 
-// TODO: not used
 namespace reclip {
 
 template <typename Observer>

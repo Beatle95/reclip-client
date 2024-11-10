@@ -1,10 +1,14 @@
 target_sources(
     reclip_core PRIVATE
+    application_main.h
     application_main.cc
+    clipboard_model.h
     clipboard_model.cc
-    clipboard_controller.cc
+    clipboard.h
     clipboard.cc
+    server.h
     server.cc
+    client_data.h
 )
 
 if(APPLE)

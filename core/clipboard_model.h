@@ -1,28 +1,27 @@
 #pragma once
 #include <vector>
 
+#include "base/observable.h"
 #include "core/client_data.h"
 #include "core/clipboard_observer.h"
 
 namespace reclip {
 
-class ClipboardModel : public ClipboardObserver {
+class ClipboardModelObserver {
  public:
-  // Right now we will simply notify about any updates.
-  class Observer {
-   public:
-    virtual void OnModelUpdated() = 0;
-  };
+  virtual ~ClipboardModelObserver() = default;
+  virtual void OnHostItemAdded() = 0;
+};
 
-  void AddObserver(Observer* observer);
-  void RemoveObserver(Observer* observer);
-
+class ClipboardModel : public Observable<ClipboardModelObserver>,
+                       public ClipboardObserver {
+ public:
+  // ClipboardObserver overrides
   void OnTextUpdated(const std::string& value) override;
 
   const std::deque<std::string>& GetHostContent() const;
 
  private:
-  std::vector<Observer*> observers_;
   std::deque<std::string> host_clipboard_content_;
 };
 

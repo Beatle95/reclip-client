@@ -1,16 +1,19 @@
 #pragma once
 #include <QMainWindow>
-#include <QTextEdit>
+#include "core/client_data.h"
+
+class QVBoxLayout;
 
 namespace reclip {
 
 class ContentWindow : public QMainWindow {
  public:
   ContentWindow();
+  void AddHostText(const QString& text);
 
  private:
-  // TODO:
-  QTextEdit* text_edit_;
+  QWidget* main_widget_ = nullptr;
+  QVBoxLayout* layout_ = nullptr;
 };
 
 }  // namespace reclip

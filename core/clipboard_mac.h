@@ -21,7 +21,6 @@ class ClipboardMac : public QObject, public Clipboard {
   void CheckTimerTimeout();
 
  private:
-  std::vector<ClipboardObserver*> observers_;
   QClipboard* clipboard_;
   QTimer check_timer_;
   QString prev_text_;

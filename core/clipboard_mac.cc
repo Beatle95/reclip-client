@@ -3,6 +3,7 @@
 #include <QGuiApplication>
 #include <cassert>
 
+#include "base/log.h"
 #include "core/clipboard_observer.h"
 
 namespace reclip {
@@ -10,8 +11,10 @@ namespace reclip {
 ClipboardMac::ClipboardMac()
     : QObject(nullptr), clipboard_(QGuiApplication::clipboard()) {
   assert(clipboard_);
+  DLOG(INFO) << "Using macOS clipboard implementation";
   connect(&check_timer_, &QTimer::timeout, this,
           &ClipboardMac::CheckTimerTimeout);
+  prev_text_ = clipboard_->text();
 }
 
 void ClipboardMac::WriteText(const std::string& text) {

@@ -15,6 +15,10 @@ void ClipboardModel::OnTextUpdated(const std::string& str) {
   while (host_clipboard_content_.size() > kClipboardSizeMax) {
     host_clipboard_content_.pop_back();
   }
+
+  for (auto& observer : observers_) {
+    observer->OnHostItemAdded();
+  }
 }
 
 const std::deque<std::string>& ClipboardModel::GetHostContent() const {

@@ -7,7 +7,7 @@
 #include "core/clipboard.h"
 #include "core/clipboard_model.h"
 #include "core/server.h"
-#include "ui/content_window.h"
+#include "ui/clipboard_controller.h"
 
 const auto kShowUiOnStartupArg = QStringLiteral("--show_ui_on_startup");
 
@@ -16,33 +16,28 @@ namespace reclip {
 ApplicationMain::ApplicationMain(int argc, char** argv)
     : QApplication(argc, argv) {
   DLOG(INFO) << "Application::Ctor";
-  client_ = std::make_unique<ClipboardModel>();
+  model_ = std::make_unique<ClipboardModel>();
 
-  clipboard_listener_ = Clipboard::Create();
-  clipboard_listener_->Start();
-  clipboard_listener_->AddObserver(client_.get());
+  clipboard_ = Clipboard::Create();
+  clipboard_->Start();
+  clipboard_->AddObserver(model_.get());
 
   server_ = std::make_unique<Server>();
-  clipboard_listener_->AddObserver(server_.get());
+  clipboard_->AddObserver(server_.get());
+
+  controller_ = std::make_unique<ClipboardController>(model_.get());
+  model_->AddObserver(controller_.get());
 
   if (arguments().contains(kShowUiOnStartupArg)) {
-    QTimer::singleShot(0, this, &ApplicationMain::ShowUi);
+    QTimer::singleShot(0, [this]() {
+      controller_->ShowUi();
+    });
   }
 }
 
 ApplicationMain::~ApplicationMain() {
   DLOG(INFO) << "Application::Dtor";
-  clipboard_listener_->Stop();
-}
-
-void ApplicationMain::ShowUi() {
-  DLOG(INFO) << "Showing ui...";
-  view_ = std::make_unique<ContentWindow>();
-}
-
-void ApplicationMain::HideUi() {
-  DLOG(INFO) << "Hiding ui...";
-  view_.reset();
+  clipboard_->Stop();
 }
 
 }  // namespace reclip

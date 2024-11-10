@@ -4,9 +4,9 @@
 
 namespace reclip {
 
-class ContentWindow;
 class Clipboard;
 class ClipboardModel;
+class ClipboardController;
 class Server;
 
 class ApplicationMain : public QApplication {
@@ -19,10 +19,10 @@ class ApplicationMain : public QApplication {
   void ShowUi();
   void HideUi();
 
-  std::unique_ptr<Clipboard> clipboard_listener_;
-  std::unique_ptr<ClipboardModel> client_;
+  std::unique_ptr<Clipboard> clipboard_;
+  std::unique_ptr<ClipboardModel> model_;
   std::unique_ptr<Server> server_;
-  std::unique_ptr<ContentWindow> view_;
+  std::unique_ptr<ClipboardController> controller_;
 };
 
 }  // namespace reclip
