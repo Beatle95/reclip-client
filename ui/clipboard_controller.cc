@@ -13,6 +13,7 @@ ClipboardController::~ClipboardController() = default;
 void ClipboardController::ShowUi() {
   DLOG(INFO) << "Showing ui...";
   content_ = std::make_unique<ContentWindow>();
+  // TODO: sync with model
 }
 
 void ClipboardController::HideUi() {
@@ -25,7 +26,11 @@ void ClipboardController::OnHostItemAdded() {
     return;
   }
   const auto& data = model_->GetHostContent();
-  content_->AddHostText(QString::fromStdString(data.back()));
+  content_->AddHostText(QString::fromStdString(data.front()));
+}
+
+void ClipboardController::OnLastHostItemRemoved() {
+  content_->RemoveLastHostText();
 }
 
 }  // namespace reclip

@@ -15,6 +15,7 @@ class ClipboardController : public ClipboardModelObserver {
   
   // ClipboardModelObserver overrides
   void OnHostItemAdded() override;
+  void OnLastHostItemRemoved() override;
   
  private:
   std::unique_ptr<ContentWindow> content_;
