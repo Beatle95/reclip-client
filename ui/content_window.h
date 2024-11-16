@@ -1,5 +1,6 @@
 #pragma once
 #include <QMainWindow>
+#include <cstdint>
 
 #include "core/client_data.h"
 
@@ -7,15 +8,24 @@ class QVBoxLayout;
 
 namespace reclip {
 
+class TextView;
+
 class ContentWindow : public QMainWindow {
  public:
-  ContentWindow();
-  void AddHostText(const QString& text);
-  void RemoveLastHostText();
+  class Delegate {
+   public:
+    virtual ~Delegate() = default;
+    virtual void OnItemClicked(uint32_t item_index) = 0;
+  };
+
+  explicit ContentWindow(Delegate* delegate);
+  void PushFrontHostText(const QString& text);
+  void PopBackHostText();
+  void TextViewClicked(TextView* child);
 
  private:
+  Delegate* delegate_ = nullptr;
   QWidget* main_widget_ = nullptr;
-  QVBoxLayout* layout_ = nullptr;
 };
 
 }  // namespace reclip

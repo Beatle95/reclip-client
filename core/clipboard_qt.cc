@@ -3,10 +3,9 @@
 #include <QGuiApplication>
 #include <cassert>
 
+#include "base/constants.h"
 #include "base/log.h"
 #include "core/clipboard_observer.h"
-
-constexpr size_t kLogLen = 10;
 
 namespace reclip {
 void ClipboardMac::WriteText(const std::string&) {
@@ -33,8 +32,9 @@ void ClipboardMac::RemoveObserver(ClipboardObserver* observer) {
 
 void ClipboardMac::ClipboardTextChanged() {
   const auto text = clipboard_->text().toStdString();
-  DLOG(INFO) << "[EVENT] clipboard text changed: \"" << text.substr(0, kLogLen)
-             << (text.size() > kLogLen ? "...\"" : "\"");
+  DLOG(INFO) << "[EVENT] ClipboardModel's clipboard text changed: \""
+             << str.substr(0, kMaxContentLogSize)
+             << (str.size() > kMaxContentLogSize ? "...\"" : "\"");
   for (auto& observer : observers_) {
     observer->OnTextUpdated(text);
   }

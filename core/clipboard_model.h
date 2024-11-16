@@ -10,8 +10,8 @@ namespace reclip {
 class ClipboardModelObserver {
  public:
   virtual ~ClipboardModelObserver() = default;
-  virtual void OnHostItemAdded() = 0;
-  virtual void OnLastHostItemRemoved() = 0;
+  virtual void OnHostItemPushed() = 0;
+  virtual void OnHostItemPoped() = 0;
 };
 
 class ClipboardModel : public Observable<ClipboardModelObserver>,

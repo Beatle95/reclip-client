@@ -5,12 +5,18 @@ class QLabel;
 
 namespace reclip {
 
+class ContentWindow;
+
 class TextView : public QWidget {
   Q_OBJECT
  public:
-  TextView(const QString& visible_text, QWidget* parent);
+  TextView(const QString& visible_text, ContentWindow* parent);
+
+ protected:
+  void mouseReleaseEvent(QMouseEvent *event);
 
  private:
+  ContentWindow* parent_;
   QLabel* label_;
 };
 

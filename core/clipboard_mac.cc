@@ -3,6 +3,7 @@
 #include <QGuiApplication>
 #include <cassert>
 
+#include "base/constants.h"
 #include "base/log.h"
 #include "core/clipboard_observer.h"
 
@@ -18,6 +19,9 @@ ClipboardMac::ClipboardMac()
 }
 
 void ClipboardMac::WriteText(const std::string& text) {
+  DLOG(INFO) << "[EVENT] Application placed text to clipboard: \""
+             << text.substr(0, kMaxContentLogSize)
+             << (text.size() > kMaxContentLogSize ? "...\"" : "\"");
   prev_text_ = QString::fromStdString(text);
   clipboard_->setText(prev_text_);
 }

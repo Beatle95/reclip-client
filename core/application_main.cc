@@ -25,7 +25,7 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
   server_ = std::make_unique<Server>();
   clipboard_->AddObserver(server_.get());
 
-  controller_ = std::make_unique<ClipboardController>(model_.get());
+  controller_ = std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
   model_->AddObserver(controller_.get());
 
   if (arguments().contains(kShowUiOnStartupArg)) {
