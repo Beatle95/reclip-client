@@ -13,13 +13,13 @@ void ClipboardModel::OnTextUpdated(const std::string& str) {
              << (str.size() > kMaxContentLogSize ? "...\"" : "\"");
   host_clipboard_content_.push_front(str);
 
-  for (auto& observer : observers_) {
+  for (auto* observer : observers_) {
     observer->OnHostItemPushed();
   }
 
   while (host_clipboard_content_.size() > kClipboardSizeMax) {
     host_clipboard_content_.pop_back();
-    for (auto& observer : observers_) {
+    for (auto* observer : observers_) {
       observer->OnHostItemPoped();
     }
   }
