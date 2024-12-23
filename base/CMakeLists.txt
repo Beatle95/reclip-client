@@ -6,6 +6,7 @@ target_sources(
     observers_list.h
     observer.h
     observer.cc
+    scoped_observation.h
 )
 
 target_sources(

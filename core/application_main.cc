@@ -20,12 +20,13 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
 
   clipboard_ = Clipboard::Create();
   clipboard_->Start();
-  clipboard_->AddObserver(model_.get());
+  model_observation_.Reset(*model_, *clipboard_);
 
   server_ = std::make_unique<Server>();
-  clipboard_->AddObserver(server_.get());
+  server_observation_.Reset(*server_, *clipboard_);
 
   controller_ = std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
+  // TODO:
   model_->AddObserver(controller_.get());
 
   if (arguments().contains(kShowUiOnStartupArg)) {

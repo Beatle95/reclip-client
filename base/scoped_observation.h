@@ -1,0 +1,54 @@
+#pragma once
+#include <cassert>
+
+namespace reclip {
+// TODO: add traits
+template <typename Subscriber, typename Target>
+class ScopedObservation {
+ public:
+  ScopedObservation() = default;
+  ScopedObservation(const ScopedObservation&) = delete;
+  ScopedObservation(ScopedObservation&&) = delete;
+  ScopedObservation operator=(const ScopedObservation&) = delete;
+  ScopedObservation operator=(ScopedObservation&&) = delete;
+
+  ScopedObservation(Subscriber& observer, Target& target)
+      : subscriber_(&observer), target_(&target) {
+    target_->AddObserver(subscriber_);
+  }
+
+  ~ScopedObservation() {
+    if (subscriber_) {
+      Unsubscribe();
+    }
+  }
+
+  void Reset() {
+    if (subscriber_) {
+      Unsubscribe();
+    }
+  }
+
+  void Reset(Subscriber& observer, Target& target) {
+    if (subscriber_) {
+      Unsubscribe();
+    }
+
+    subscriber_ = &observer;
+    target_ = &target;
+    target_->AddObserver(subscriber_);
+  }
+
+ private:
+  void Unsubscribe() {
+    assert(subscriber_);
+    assert(target_);
+    target_->RemoveObserver(subscriber_);
+    subscriber_ = nullptr;
+    target_ = nullptr;
+  }
+
+  Subscriber* subscriber_ = nullptr;
+  Target* target_ = nullptr;
+};
+}  // namespace reclip

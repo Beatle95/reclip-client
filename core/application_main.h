@@ -2,6 +2,8 @@
 #include <QApplication>
 #include <memory>
 
+#include "base/scoped_observation.h"
+
 namespace reclip {
 
 class Clipboard;
@@ -23,6 +25,9 @@ class ApplicationMain : public QApplication {
   std::unique_ptr<ClipboardModel> model_;
   std::unique_ptr<Server> server_;
   std::unique_ptr<ClipboardController> controller_;
+
+  ScopedObservation<ClipboardModel, Clipboard> model_observation_;
+  ScopedObservation<Server, Clipboard> server_observation_;
 };
 
 }  // namespace reclip
