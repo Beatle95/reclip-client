@@ -19,11 +19,9 @@ class ObserversList {
   // dereference to correct location.
   class SafeIterator {
    public:
-    using internal_iterator = ContainerType::iterator;
-    using value_type = ContainerType::iterator::value_type;
-    using difference_type = ContainerType::iterator::difference_type;
-    using pointer = ContainerType::iterator::pointer;
-    using reference = ContainerType::iterator::reference;
+    using value_type = T*;
+    using difference_type = std::ptrdiff_t;
+    using pointer = T*;
     using iterator_category = std::forward_iterator_tag;
 
     SafeIterator() = default;
@@ -93,7 +91,7 @@ class ObserversList {
       return result;
     }
 
-    reference operator*() {
+    pointer operator*() {
       assert(observers_list_ != nullptr);
       assert(it_ != observers_list_->observers_.end());
       return *it_;
@@ -116,6 +114,9 @@ class ObserversList {
     ContainerType::iterator it_;
     ObserversList* observers_list_ = nullptr;
   };
+
+  using iterator = SafeIterator;
+  using const_iterator = SafeIterator;
 
   ~ObserversList() {
     assert(lock_count_ == 0 &&
@@ -161,8 +162,8 @@ class ObserversList {
 
   size_t size() const { return size_; }
   bool empty() const { return size_ == 0; }
-  SafeIterator begin() { return SafeIterator(observers_.begin(), *this); }
-  SafeIterator end() { return SafeIterator(observers_.end(), *this); }
+  iterator begin() { return SafeIterator(observers_.begin(), *this); }
+  iterator end() { return SafeIterator(observers_.end(), *this); }
 
  private:
   friend class SafeIterator;
