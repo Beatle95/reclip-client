@@ -6,6 +6,8 @@ target_sources(
     text_view.cc
     clipboard_controller.h
     clipboard_controller.cc
+    host_clipboard_view.h
+    host_clipboard_view.cc
 )
 
 target_sources(

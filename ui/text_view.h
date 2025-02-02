@@ -2,21 +2,22 @@
 #include <QWidget>
 
 class QLabel;
+class QWidget;
 
 namespace reclip {
-
-class ContentWindow;
 
 class TextView : public QWidget {
   Q_OBJECT
  public:
-  TextView(const QString& visible_text, ContentWindow* parent);
+  TextView(const QString& visible_text, QWidget* parent);
 
  protected:
-  void mouseReleaseEvent(QMouseEvent *event);
+  void mouseReleaseEvent(QMouseEvent* event);
+
+ signals:
+  void Clicked();
 
  private:
-  ContentWindow* parent_;
   QLabel* label_;
 };
 

@@ -16,7 +16,7 @@ void ClipboardController::ShowUi() {
   
   // Set up ui.
   for (const auto& elem : model_->GetHostContent()) {
-    content_->PushFrontHostText(QString::fromStdString(elem));
+    content_->PushTopHostText(QString::fromStdString(elem));
   }
 }
 
@@ -30,12 +30,15 @@ void ClipboardController::OnHostItemPushed() {
     return;
   }
   const auto& data = model_->GetHostContent();
-  content_->PushFrontHostText(QString::fromStdString(data.front()));
+  content_->PushTopHostText(QString::fromStdString(data.front()));
 }
 
-void ClipboardController::OnHostItemPoped() { content_->PopBackHostText(); }
+void ClipboardController::OnHostItemPoped() { content_->PopBottomHostText(); }
 
-void ClipboardController::OnItemClicked(uint32_t item_index) {
+void ClipboardController::OnItemClicked(uint32_t host_index, uint32_t item_index) {
+  // TODO:
+  (void)host_index;
+
   const auto& data = model_->GetHostContent();
   if (item_index >= data.size()) {
     assert(false && "Unexpected index, which exeeds data size");

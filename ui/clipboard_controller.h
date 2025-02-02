@@ -22,7 +22,7 @@ class ClipboardController : public ClipboardModelObserver,
   void OnHostItemPoped() override;
 
   // ContentWindow::Delegate overrides
-  void OnItemClicked(uint32_t item_index) override;
+  void OnItemClicked(uint32_t host_index, uint32_t item_index) override;
 
  private:
   std::unique_ptr<ContentWindow> content_;
