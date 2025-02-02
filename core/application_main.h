@@ -28,6 +28,7 @@ class ApplicationMain : public QApplication {
 
   ScopedObservation<ClipboardModel, Clipboard> model_observation_;
   ScopedObservation<Server, Clipboard> server_observation_;
+  ScopedObservation<ClipboardController, ClipboardModel> controller_observation_;
 };
 
 }  // namespace reclip

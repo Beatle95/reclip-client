@@ -35,7 +35,7 @@ void ClipboardMac::ClipboardTextChanged() {
   DLOG(INFO) << "[EVENT] ClipboardModel's clipboard text changed: \""
              << str.substr(0, kMaxContentLogSize)
              << (str.size() > kMaxContentLogSize ? "...\"" : "\"");
-  for (auto& observer : observers_) {
+  for (auto* observer : observers_) {
     observer->OnTextUpdated(text);
   }
 }

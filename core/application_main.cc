@@ -26,8 +26,7 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
   server_observation_.Reset(*server_, *clipboard_);
 
   controller_ = std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
-  // TODO:
-  model_->AddObserver(controller_.get());
+  controller_observation_.Reset(*controller_, *model_);
 
   if (arguments().contains(kShowUiOnStartupArg)) {
     QTimer::singleShot(0, [this]() {

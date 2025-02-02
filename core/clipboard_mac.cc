@@ -34,7 +34,7 @@ void ClipboardMac::CheckTimerTimeout() {
   const auto text = clipboard_->text();
   if (text != prev_text_) {
     const auto tmp_text = text.toStdString();
-    for (auto& observer : observers_) {
+    for (auto* observer : observers_) {
       observer->OnTextUpdated(tmp_text);
     }
     prev_text_ = text;
