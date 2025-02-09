@@ -10,20 +10,24 @@ namespace reclip {
 class ClipboardModelObserver : public CheckedObserver {
  public:
   virtual ~ClipboardModelObserver() = default;
-  virtual void OnHostItemPushed() = 0;
-  virtual void OnHostItemPoped() = 0;
+  virtual void OnItemPushed(size_t host_index) = 0;
+  virtual void OnItemPoped(size_t host_index) = 0;
 };
 
 class ClipboardModel : public SimpleObservable<ClipboardModelObserver>,
                        public ClipboardObserver {
  public:
+  using HostClipboardQueue = std::deque<std::string>;
+  ClipboardModel();
+
   // ClipboardObserver overrides
   void OnTextUpdated(const std::string& value) override;
 
-  const std::deque<std::string>& GetHostContent() const;
+  size_t GetHostsCount() const;
+  const HostClipboardQueue& GetContent(size_t host_index) const;
 
  private:
-  std::deque<std::string> host_clipboard_content_;
+  std::vector<HostClipboardQueue> clipboard_content_;
 };
 
 }  // namespace reclip

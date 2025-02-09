@@ -5,7 +5,8 @@
 
 namespace reclip {
 
-ClipboardController::ClipboardController(ClipboardModel* model, Clipboard* clipboard)
+ClipboardController::ClipboardController(ClipboardModel* model,
+                                         Clipboard* clipboard)
     : model_(model), clipboard_(clipboard) {}
 
 ClipboardController::~ClipboardController() = default;
@@ -13,10 +14,14 @@ ClipboardController::~ClipboardController() = default;
 void ClipboardController::ShowUi() {
   LOG(INFO) << "Showing ui...";
   content_ = std::make_unique<ContentWindow>(this);
-  
+
   // Set up ui.
-  for (const auto& elem : model_->GetHostContent()) {
-    content_->PushTopHostText(QString::fromStdString(elem));
+  for (size_t i = 0; i < model_->GetHostsCount(); ++i) {
+    // TODO:
+    assert(i < 1);
+    for (const auto& elem : model_->GetContent(i)) {
+      content_->PushTopHostText(QString::fromStdString(elem));
+    }
   }
 }
 
@@ -25,21 +30,26 @@ void ClipboardController::HideUi() {
   content_.reset();
 }
 
-void ClipboardController::OnHostItemPushed() {
+void ClipboardController::OnItemPushed(size_t index) {
+  // TODO:
+  assert(index == 0);
   if (!content_) {
     return;
   }
-  const auto& data = model_->GetHostContent();
+  const auto& data = model_->GetContent(index);
   content_->PushTopHostText(QString::fromStdString(data.front()));
 }
 
-void ClipboardController::OnHostItemPoped() { content_->PopBottomHostText(); }
+void ClipboardController::OnItemPoped(size_t index) {
+  assert(index == 0);
+  content_->PopBottomHostText();
+}
 
-void ClipboardController::OnItemClicked(uint32_t host_index, uint32_t item_index) {
+void ClipboardController::OnItemClicked(uint32_t host_index,
+                                        uint32_t item_index) {
   // TODO:
-  (void)host_index;
-
-  const auto& data = model_->GetHostContent();
+  assert(host_index == 0);
+  const auto& data = model_->GetContent(host_index);
   if (item_index >= data.size()) {
     assert(false && "Unexpected index, which exeeds data size");
     return;
