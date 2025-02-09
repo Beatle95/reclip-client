@@ -12,7 +12,7 @@
 namespace reclip {
 
 // Nono-standard enum elements names, to make logging pritier.
-enum class Severity { _INFO, _WARNING, _CRITICAL };
+enum class Severity { _INFO, _WARNING, _ERROR, _CRITICAL };
 
 class Log {
  public:

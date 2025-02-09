@@ -16,6 +16,8 @@ std::string_view SeverityToStr(Severity val) {
       return "INFO";
     case Severity::_WARNING:
       return "WARNING";
+    case Severity::_ERROR:
+      return "ERROR";
     case Severity::_CRITICAL:
       return "CRITICAL";
   }

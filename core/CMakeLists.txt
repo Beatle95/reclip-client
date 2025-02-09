@@ -22,5 +22,5 @@ endif()
 
 target_sources(
     unit_tests PRIVATE
-    # TODO:
+    clipboard_model_unittests.cc
 )

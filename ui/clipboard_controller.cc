@@ -17,9 +17,7 @@ void ClipboardController::ShowUi() {
 
   // Set up ui.
   for (size_t i = 0; i < model_->GetHostsCount(); ++i) {
-    // TODO:
-    assert(i < 1);
-    for (const auto& elem : model_->GetContent(i)) {
+    for (const auto& elem : model_->GetHostData(i).text_data) {
       content_->PushTopHostText(QString::fromStdString(elem));
     }
   }
@@ -30,26 +28,38 @@ void ClipboardController::HideUi() {
   content_.reset();
 }
 
-void ClipboardController::OnItemPushed(size_t index) {
-  // TODO:
-  assert(index == 0);
+void ClipboardController::OnItemPushed(size_t host_index) {
   if (!content_) {
     return;
   }
-  const auto& data = model_->GetContent(index);
+  const auto& data = model_->GetHostData(host_index).text_data;
   content_->PushTopHostText(QString::fromStdString(data.front()));
 }
 
-void ClipboardController::OnItemPoped(size_t index) {
-  assert(index == 0);
+void ClipboardController::OnItemPoped(size_t) {
+  if (!content_) {
+    return;
+  }
   content_->PopBottomHostText();
+}
+
+void ClipboardController::OnHostAdded(size_t) {
+  if (!content_) {
+    return;
+  }
+  // TODO:
+}
+
+void ClipboardController::OnModelReset() {
+  if (!content_) {
+    return;
+  }
+  // TODO:
 }
 
 void ClipboardController::OnItemClicked(uint32_t host_index,
                                         uint32_t item_index) {
-  // TODO:
-  assert(host_index == 0);
-  const auto& data = model_->GetContent(host_index);
+  const auto& data = model_->GetHostData(host_index).text_data;
   if (item_index >= data.size()) {
     assert(false && "Unexpected index, which exeeds data size");
     return;

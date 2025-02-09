@@ -4,6 +4,7 @@
 #include <cassert>
 
 #include "base/log.h"
+#include "base/preferences.h"
 #include "core/clipboard.h"
 #include "core/clipboard_model.h"
 #include "core/server.h"
@@ -16,13 +17,14 @@ namespace reclip {
 ApplicationMain::ApplicationMain(int argc, char** argv)
     : QApplication(argc, argv) {
   DLOG(INFO) << "Application::Ctor";
+  InitId();
   model_ = std::make_unique<ClipboardModel>();
 
   clipboard_ = Clipboard::Create();
   clipboard_->Start();
   model_observation_.Reset(*model_, *clipboard_);
 
-  server_ = std::make_unique<Server>();
+  server_ = std::make_unique<Server>(*model_);
   server_observation_.Reset(*server_, *clipboard_);
 
   controller_ = std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
@@ -38,6 +40,11 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
 ApplicationMain::~ApplicationMain() {
   DLOG(INFO) << "Application::Dtor";
   clipboard_->Stop();
+}
+
+void ApplicationMain::InitId() {
+  // TODO:
+  Preferences::GetInstance().SetHostId("this_host");
 }
 
 }  // namespace reclip

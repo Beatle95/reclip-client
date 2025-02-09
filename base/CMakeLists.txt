@@ -7,6 +7,8 @@ target_sources(
     observer.h
     observer.cc
     scoped_observation.h
+    preferences.h
+    preferences.cc
 )
 
 target_sources(
