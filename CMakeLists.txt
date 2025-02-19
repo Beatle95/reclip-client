@@ -23,6 +23,7 @@ endif()
 # main targets
 add_library(reclip_core null.cc)
 add_library(reclip_ui null.cc)
+add_library(reclip_communication null.cc)
 # main targets
 
 # unit_tests
@@ -40,6 +41,7 @@ target_link_libraries(
 )
 target_link_libraries(
     reclip_core PUBLIC
+    reclip_communication
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -47,6 +49,10 @@ target_link_libraries(
 target_link_libraries(
     reclip_ui PUBLIC
     Qt6::Widgets
+    Qt6::Core
+)
+target_link_libraries(
+    reclip_communication PUBLIC
     Qt6::Core
 )
 

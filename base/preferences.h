@@ -2,6 +2,8 @@
 #include <string>
 #include <string_view>
 
+#include "base/host_types.h"
+
 namespace reclip {
 
 class Preferences {
@@ -10,12 +12,12 @@ class Preferences {
   static Preferences& GetInstance();
 
   // Main preferences.
-  void SetHostId(std::string_view id);
-  const std::string& GetHostId() const;
+  void SetHostSecret(const HostId& id);
+  const HostId& GetHostSecret() const;
 
  private:
   Preferences() = default;
-  std::string id_;
+  HostId id_;
 };
 
 }  // namespace reclip

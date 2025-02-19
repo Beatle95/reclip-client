@@ -26,13 +26,13 @@ class ClipboardModelTest : public ::testing::Test {
   ClipboardModelTest()
       : model_(std::make_unique<ClipboardModel>()),
         observer_(std::make_unique<MockClipboardModelObserver>()) {
-    Preferences::GetInstance().SetHostId("host");
+    Preferences::GetInstance().SetHostSecret("host");
     observation_.Reset(*observer_, *model_);
   }
 
   auto GetTextData(size_t host_index) {
     assert(host_index < model_->GetHostsCount());
-    return model_->GetHostData(host_index).text_data;
+    return model_->GetHostData(host_index).data.text;
   }
 
   MockClipboardModelObserver& observer() { return *observer_; }
@@ -68,7 +68,7 @@ TEST_F(ClipboardModelTest, ProcessRemoteTextUpdate) {
     EXPECT_CALL(observer(), OnItemPushed(_)).Times(0);
     EXPECT_EQ(model_->GetHostsCount(), 1);
     EXPECT_TRUE(GetTextData(0).empty());
-    model_->ProcessNewText(Preferences::GetInstance().GetHostId(), "text");
+    model_->ProcessNewText(Preferences::GetInstance().GetHostSecret(), "text");
     // Must be rejected.
     EXPECT_TRUE(GetTextData(0).empty());
   }

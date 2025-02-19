@@ -9,6 +9,7 @@ target_sources(
     scoped_observation.h
     preferences.h
     preferences.cc
+    host_types.h
 )
 
 target_sources(

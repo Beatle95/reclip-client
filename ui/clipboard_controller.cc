@@ -17,7 +17,7 @@ void ClipboardController::ShowUi() {
 
   // Set up ui.
   for (size_t i = 0; i < model_->GetHostsCount(); ++i) {
-    for (const auto& elem : model_->GetHostData(i).text_data) {
+    for (const auto& elem : model_->GetHostData(i).data.text) {
       content_->PushTopHostText(QString::fromStdString(elem));
     }
   }
@@ -32,7 +32,7 @@ void ClipboardController::OnItemPushed(size_t host_index) {
   if (!content_) {
     return;
   }
-  const auto& data = model_->GetHostData(host_index).text_data;
+  const auto& data = model_->GetHostData(host_index).data.text;
   content_->PushTopHostText(QString::fromStdString(data.front()));
 }
 
@@ -59,7 +59,7 @@ void ClipboardController::OnModelReset() {
 
 void ClipboardController::OnItemClicked(uint32_t host_index,
                                         uint32_t item_index) {
-  const auto& data = model_->GetHostData(host_index).text_data;
+  const auto& data = model_->GetHostData(host_index).data.text;
   if (item_index >= data.size()) {
     assert(false && "Unexpected index, which exeeds data size");
     return;

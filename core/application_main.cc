@@ -44,7 +44,7 @@ ApplicationMain::~ApplicationMain() {
 
 void ApplicationMain::InitId() {
   // TODO:
-  Preferences::GetInstance().SetHostId("this_host");
+  Preferences::GetInstance().SetHostSecret("this_host_secret");
 }
 
 }  // namespace reclip

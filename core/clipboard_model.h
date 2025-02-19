@@ -1,10 +1,10 @@
 #pragma once
 #include <vector>
 
+#include "base/host_types.h"
 #include "base/observers_list.h"
 #include "core/client_data.h"
 #include "core/clipboard_observer.h"
-#include "core/host_data.h"
 #include "core/server.h"
 
 namespace reclip {
@@ -24,21 +24,20 @@ class ClipboardModel : public SimpleObservable<ClipboardModelObserver>,
  public:
   ClipboardModel();
   virtual ~ClipboardModel() = default;
-  void SyncHosts(std::vector<HostData> data);
+  void SyncHosts(ClipboardData this_host_data, std::vector<HostData> data);
 
   // ClipboardObserver overrides
   void OnTextUpdated(const std::string& value) override;
 
   // Server::Delegate overrides
-  void ProcessNewHost(const std::string& id, const std::string& name) override;
-  void ProcessNewText(const std::string& id, const std::string& text) override;
+  void ProcessNewHost(const HostId& id, const std::string& name) override;
+  bool ProcessNewText(const HostId& id, const std::string& text) override;
 
   size_t GetHostsCount() const;
   const HostData& GetHostData(size_t host_index) const;
 
  private:
   void ProcessNewTextImpl(size_t index, const std::string& text);
-  void InitThisHostData();
 
   std::vector<HostData> hosts_;
 };

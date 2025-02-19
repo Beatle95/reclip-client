@@ -8,11 +8,11 @@ Preferences& Preferences::GetInstance() {
   return instance;
 }
 
-void Preferences::SetHostId(std::string_view id) {
+void Preferences::SetHostSecret(const HostId& id) {
   assert(!id.empty());
   id_ = id;
 }
 
-const std::string& Preferences::GetHostId() const { return id_; }
+const HostId& Preferences::GetHostSecret() const { return id_; }
 
 }  // namespace reclip
