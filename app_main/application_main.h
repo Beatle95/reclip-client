@@ -9,7 +9,7 @@ namespace reclip {
 class Clipboard;
 class ClipboardModel;
 class ClipboardController;
-class Server;
+class ServerImpl;
 
 class ApplicationMain : public QApplication {
   Q_OBJECT
@@ -24,11 +24,11 @@ class ApplicationMain : public QApplication {
 
   std::unique_ptr<Clipboard> clipboard_;
   std::unique_ptr<ClipboardModel> model_;
-  std::unique_ptr<Server> server_;
+  std::unique_ptr<ServerImpl> server_;
   std::unique_ptr<ClipboardController> controller_;
 
   ScopedObservation<ClipboardModel, Clipboard> model_observation_;
-  ScopedObservation<Server, Clipboard> server_observation_;
+  ScopedObservation<ServerImpl, Clipboard> server_observation_;
   ScopedObservation<ClipboardController, ClipboardModel> controller_observation_;
 };
 

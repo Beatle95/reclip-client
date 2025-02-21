@@ -24,12 +24,13 @@ class ClipboardModel : public SimpleObservable<ClipboardModelObserver>,
  public:
   ClipboardModel();
   virtual ~ClipboardModel() = default;
-  void SyncHosts(ClipboardData this_host_data, std::vector<HostData> data);
 
   // ClipboardObserver overrides
   void OnTextUpdated(const std::string& value) override;
 
   // Server::Delegate overrides
+  void ProcessSyncData(ClipboardData this_host_data,
+                       std::vector<HostData> data) override;
   void ProcessNewHost(const HostId& id, const std::string& name) override;
   bool ProcessNewText(const HostId& id, const std::string& text) override;
 

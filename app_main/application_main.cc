@@ -1,13 +1,13 @@
-#include "core/application_main.h"
+#include "app_main/application_main.h"
 
 #include <QTimer>
 #include <cassert>
 
 #include "base/log.h"
 #include "base/preferences.h"
+#include "communication/server_impl.h"
 #include "core/clipboard.h"
 #include "core/clipboard_model.h"
-#include "core/server.h"
 #include "ui/clipboard_controller.h"
 
 const auto kShowUiOnStartupArg = QStringLiteral("--show_ui_on_startup");
@@ -24,16 +24,15 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
   clipboard_->Start();
   model_observation_.Reset(*model_, *clipboard_);
 
-  server_ = std::make_unique<Server>(*model_);
+  server_ = std::make_unique<ServerImpl>(*model_);
   server_observation_.Reset(*server_, *clipboard_);
 
-  controller_ = std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
+  controller_ =
+      std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
   controller_observation_.Reset(*controller_, *model_);
 
   if (arguments().contains(kShowUiOnStartupArg)) {
-    QTimer::singleShot(0, [this]() {
-      controller_->ShowUi();
-    });
+    QTimer::singleShot(0, [this]() { controller_->ShowUi(); });
   }
 }
 

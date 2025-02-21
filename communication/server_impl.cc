@@ -1,4 +1,4 @@
-#include "core/server.h"
+#include "communication/server_impl.h"
 
 #include <cassert>
 #include <chrono>
@@ -10,7 +10,7 @@ using namespace std::chrono_literals;
 
 namespace reclip {
 
-Server::Server(Delegate& delegate)
+ServerImpl::ServerImpl(Server::Delegate& delegate)
     : delegate_(&delegate), connection_(ServerConnection::Create(*this)) {
   assert(connection_);
   connection_->Connect(Preferences::GetInstance().GetHostSecret());
@@ -27,18 +27,15 @@ Server::Server(Delegate& delegate)
   retry_process_task_timer_.setSingleShot(true);
 }
 
-void Server::RequestFullSync(SyncCallback callback) {
-  // TODO:
-  (void)callback;
-}
+ServerImpl::~ServerImpl() = default;
 
-void Server::OnTextUpdated(const std::string& value) {
+void ServerImpl::OnTextUpdated(const std::string& value) {
   // TODO:
   (void)value;
   (void)delegate_;
 }
 
-void Server::HandleConnect(bool is_connected) {
+void ServerImpl::HandleConnect(bool is_connected) {
   if (is_connected) {
     state_ = ConnectionState::kConnected;
     // TODO: request sync
@@ -50,17 +47,17 @@ void Server::HandleConnect(bool is_connected) {
   }
 }
 
-void Server::HandleDisconnected() {
+void ServerImpl::HandleDisconnected() {
   state_ = ConnectionState::kDisconnected;
   assert(!reconnect_timer_.isActive());
   reconnect_timer_.start();
 }
 
-void Server::HandleFullSync() {
+void ServerImpl::HandleFullSync() {
   // TODO:
 }
 
-void Server::HandleTextSent(bool is_success) {
+void ServerImpl::HandleTextSent(bool is_success) {
   if (is_success) {
     current_task_.reset();
     TryProcessTask();
@@ -70,22 +67,23 @@ void Server::HandleTextSent(bool is_success) {
   }
 }
 
-void Server::HandleHostData(const HostId& id, const std::string& name) {
+void ServerImpl::HandleHostData(const HostId& id, const std::string& name) {
   assert(delegate_);
   delegate_->ProcessNewHost(id, name);
 }
 
-void Server::HandleNewText(const HostId& id, const std::string& text) {
+void ServerImpl::HandleNewText(const HostId& id, const std::string& text) {
   assert(delegate_);
   if (!delegate_->ProcessNewText(id, text)) {
-    LOG(ERROR) << "Server has sent text data for unknown host, resync will be "
-                  "requested: "
-               << id;
+    LOG(ERROR)
+        << "ServerImpl has sent text data for unknown host, resync will be "
+           "requested: "
+        << id;
     // TODO: request sync again.
   }
 }
 
-void Server::TryProcessTask() {
+void ServerImpl::TryProcessTask() {
   if (current_task_) {
     current_task_->Process(*connection_);
   } else if (!tasks_queue_.empty()) {

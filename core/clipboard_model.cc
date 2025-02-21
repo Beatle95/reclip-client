@@ -25,6 +25,23 @@ void ClipboardModel::OnTextUpdated(const std::string& str) {
   ProcessNewTextImpl(kThisHostModelIndex, str);
 }
 
+void ClipboardModel::ProcessSyncData(ClipboardData this_host_data,
+                                     std::vector<HostData> data) {
+  assert(!hosts_.empty());
+
+  if (hosts_[kThisHostModelIndex].data.text.empty()) {
+    hosts_[kThisHostModelIndex].data = std::move(this_host_data);
+  }
+
+  hosts_.resize(1);
+  hosts_.insert(hosts_.end(), std::make_move_iterator(data.begin()),
+                std::make_move_iterator(data.end()));
+
+  for (auto* observer : observers_) {
+    observer->OnModelReset();
+  }
+}
+
 void ClipboardModel::ProcessNewHost(const HostId& id, const std::string& name) {
   hosts_.push_back(HostData{id, name, {}});
   for (auto* observer : observers_) {
@@ -57,23 +74,6 @@ void ClipboardModel::ProcessNewTextImpl(size_t index, const std::string& text) {
     for (auto* observer : observers_) {
       observer->OnItemPoped(index);
     }
-  }
-}
-
-void ClipboardModel::SyncHosts(ClipboardData this_host_data,
-                               std::vector<HostData> data) {
-  assert(!hosts_.empty());
-
-  if (hosts_[kThisHostModelIndex].data.text.empty()) {
-    hosts_[kThisHostModelIndex].data = std::move(this_host_data);
-  }
-
-  hosts_.resize(1);
-  hosts_.insert(hosts_.end(), std::make_move_iterator(data.begin()),
-                std::make_move_iterator(data.end()));
-
-  for (auto* observer : observers_) {
-    observer->OnModelReset();
   }
 }
 

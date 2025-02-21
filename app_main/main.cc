@@ -1,7 +1,7 @@
 #include <exception>
 
 #include "base/log.h"
-#include "core/application_main.cc"
+#include "app_main/application_main.cc"
 
 using namespace reclip;
 

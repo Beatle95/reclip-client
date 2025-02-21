@@ -15,16 +15,22 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     add_compile_options(-Wall -Wextra -Wpedantic -Werror)
-    add_executable(${PROJECT_NAME} MACOSX_BUNDLE main.cc)
+    add_executable(${PROJECT_NAME} MACOSX_BUNDLE null.cc)
 else ()
     message(FATAL_ERROR "Not implemented")
 endif()
 
 # main targets
+add_library(reclip_app_main null.cc)
 add_library(reclip_core null.cc)
 add_library(reclip_ui null.cc)
 add_library(reclip_communication null.cc)
 # main targets
+
+target_link_libraries(
+    ${PROJECT_NAME} PRIVATE
+    reclip_app_main
+)
 
 # unit_tests
 enable_testing()
@@ -34,29 +40,8 @@ target_link_libraries(unit_tests PUBLIC gtest_main gmock reclip_core)
 add_test(NAME unit_tests COMMAND unit_tests)
 # unit_tests
 
-target_link_libraries(
-    ${PROJECT_NAME} PRIVATE
-    reclip_core
-    reclip_ui
-)
-target_link_libraries(
-    reclip_core PUBLIC
-    reclip_communication
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
-)
-target_link_libraries(
-    reclip_ui PUBLIC
-    Qt6::Widgets
-    Qt6::Core
-)
-target_link_libraries(
-    reclip_communication PUBLIC
-    Qt6::Core
-)
-
 add_subdirectory(third_party)
+add_subdirectory(app_main)
 add_subdirectory(base)
 add_subdirectory(core)
 add_subdirectory(ui)

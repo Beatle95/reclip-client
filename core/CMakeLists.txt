@@ -1,13 +1,10 @@
 target_sources(
     reclip_core PRIVATE
-    application_main.h
-    application_main.cc
     clipboard_model.h
     clipboard_model.cc
     clipboard.h
     clipboard.cc
     server.h
-    server.cc
     client_data.h
 )
 
@@ -23,4 +20,10 @@ endif()
 target_sources(
     unit_tests PRIVATE
     clipboard_model_unittests.cc
+)
+
+target_link_libraries(
+    reclip_core PUBLIC
+    Qt6::Core
+    Qt6::Widgets
 )

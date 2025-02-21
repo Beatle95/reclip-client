@@ -10,6 +10,12 @@ target_sources(
     host_clipboard_view.cc
 )
 
+target_link_libraries(
+    reclip_ui PUBLIC
+    Qt6::Core
+    Qt6::Widgets
+)
+
 target_sources(
     unit_tests PRIVATE
     # TODO:
