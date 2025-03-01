@@ -20,6 +20,8 @@ endif()
 target_sources(
     unit_tests PRIVATE
     clipboard_model_unittests.cc
+    test_with_event_loop_base.h
+    test_with_event_loop_base.cc
 )
 
 target_link_libraries(

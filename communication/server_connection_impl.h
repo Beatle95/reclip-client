@@ -4,6 +4,7 @@
 
 namespace reclip {
 
+// This class abstracts away connection and communication with server.
 class ServerConnectionImpl : public ServerConnection {
  public:
   explicit ServerConnectionImpl(ServerConnection::Delegate& delegate);

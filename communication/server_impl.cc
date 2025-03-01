@@ -5,42 +5,64 @@
 
 #include "base/log.h"
 #include "base/preferences.h"
+#include "communication/server_connection_impl.h"
 
 using namespace std::chrono_literals;
 
 namespace reclip {
 
-ServerImpl::ServerImpl(Server::Delegate& delegate)
-    : delegate_(&delegate), connection_(ServerConnection::Create(*this)) {
+namespace {
+ServerImpl::TestHelper* g_test_helper = nullptr;
+}
+
+ServerImpl::TestHelper::TestHelper() {
+  assert(g_test_helper == nullptr);
+  g_test_helper = this;
+}
+
+ServerImpl::TestHelper::~TestHelper() {
+  assert(g_test_helper == this);
+  g_test_helper = nullptr;
+}
+
+ServerImpl::ServerImpl(ServerDelegate& delegate)
+    : delegate_(&delegate),
+      connection_(g_test_helper
+                      ? g_test_helper->CreateConnection()
+                      : std::make_unique<ServerConnectionImpl>(*this)) {
   assert(connection_);
-  connection_->Connect(Preferences::GetInstance().GetHostSecret());
-  state_ = ConnectionState::kConnecting;
-
-  reconnect_timer_.setInterval(3s);
+  reconnect_timer_.setInterval(0s);
   reconnect_timer_.setSingleShot(true);
-  connect(&reconnect_timer_, &QTimer::timeout, [this]() {
-    connection_->Connect(Preferences::GetInstance().GetHostSecret());
-  });
+  connect(&reconnect_timer_, &QTimer::timeout, this, &ServerImpl::ConnectImpl);
+  // It is better if Connect will be handled in one place, so I don't call it in
+  // constructor.
   reconnect_timer_.start();
-
-  retry_process_task_timer_.setInterval(1s);
-  retry_process_task_timer_.setSingleShot(true);
 }
 
 ServerImpl::~ServerImpl() = default;
 
+void ServerImpl::ConnectImpl() {
+  LOG(INFO) << "Connecting to server\n";
+  reconnect_timer_.setInterval(g_test_helper ? 0s : 3s);
+  state_ = ConnectionState::kConnecting;
+  connection_->Connect(Preferences::GetInstance().GetHostSecret());
+}
+
 void ServerImpl::OnTextUpdated(const std::string& value) {
-  // TODO:
-  (void)value;
-  (void)delegate_;
+  tasks_queue_.push(std::make_unique<SendTask>(SendTask::Type::kText, value));
+  if (state_ == ConnectionState::kConnected) {
+    TryProcessTask();
+  }
 }
 
 void ServerImpl::HandleConnect(bool is_connected) {
+  assert(state_ == ConnectionState::kConnecting);
   if (is_connected) {
-    state_ = ConnectionState::kConnected;
-    // TODO: request sync
-    TryProcessTask();
+    LOG(INFO) << "Connection successful";
+    state_ = ConnectionState::kSyncing;
+    connection_->RequestFullSync();
   } else {
+    LOG(INFO) << "Connection is not successful";
     state_ = ConnectionState::kDisconnected;
     assert(!reconnect_timer_.isActive());
     reconnect_timer_.start();
@@ -48,48 +70,67 @@ void ServerImpl::HandleConnect(bool is_connected) {
 }
 
 void ServerImpl::HandleDisconnected() {
-  state_ = ConnectionState::kDisconnected;
+  assert(state_ != ConnectionState::kDisconnected);
   assert(!reconnect_timer_.isActive());
+
+  LOG(INFO) << "Disconnected from server";
+  state_ = ConnectionState::kDisconnected;
   reconnect_timer_.start();
 }
 
-void ServerImpl::HandleFullSync() {
-  // TODO:
+void ServerImpl::HandleFullSync(ClipboardData this_host_data,
+                                std::vector<HostData> data, bool is_success) {
+  assert(state_ == ConnectionState::kSyncing);
+  if (!is_success) {
+    connection_->Disconnect();
+    return;
+  }
+  state_ = ConnectionState::kConnected;
+  delegate_->ProcessSyncData(std::move(this_host_data), std::move(data));
 }
 
 void ServerImpl::HandleTextSent(bool is_success) {
+  assert(state_ == ConnectionState::kConnected);
   if (is_success) {
     current_task_.reset();
     TryProcessTask();
   } else {
-    assert(!retry_process_task_timer_.isActive());
-    retry_process_task_timer_.start();
+    connection_->Disconnect();
   }
 }
 
-void ServerImpl::HandleHostData(const HostId& id, const std::string& name) {
-  assert(delegate_);
+void ServerImpl::HandleNewHost(const HostId& id, const std::string& name) {
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
   delegate_->ProcessNewHost(id, name);
 }
 
 void ServerImpl::HandleNewText(const HostId& id, const std::string& text) {
-  assert(delegate_);
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
   if (!delegate_->ProcessNewText(id, text)) {
     LOG(ERROR)
         << "ServerImpl has sent text data for unknown host, resync will be "
            "requested: "
         << id;
-    // TODO: request sync again.
+    connection_->Disconnect();
   }
 }
 
+ServerImpl::ConnectionState ServerImpl::GetStateForTesting() const {
+  return state_;
+}
+
 void ServerImpl::TryProcessTask() {
+  assert(state_ == ConnectionState::kConnected);
   if (current_task_) {
-    current_task_->Process(*connection_);
+    connection_->SendText(current_task_->data);
   } else if (!tasks_queue_.empty()) {
     current_task_ = std::move(tasks_queue_.front());
     tasks_queue_.pop();
-    current_task_->Process(*connection_);
+    connection_->SendText(current_task_->data);
   }
 }
 

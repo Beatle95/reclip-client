@@ -12,7 +12,9 @@ void ServerConnectionImpl::Connect(const HostSecret& secret) {
 
 void ServerConnectionImpl::Disconnect() { delegate_->HandleDisconnected(); }
 
-void ServerConnectionImpl::RequestFullSync() { delegate_->HandleFullSync(); }
+void ServerConnectionImpl::RequestFullSync() {
+  delegate_->HandleFullSync({}, {}, true);
+}
 
 void ServerConnectionImpl::SendText(const std::string& text) {
   (void)text;

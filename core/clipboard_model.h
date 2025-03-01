@@ -20,7 +20,7 @@ class ClipboardModelObserver : public CheckedObserver {
 
 class ClipboardModel : public SimpleObservable<ClipboardModelObserver>,
                        public ClipboardObserver,
-                       public Server::Delegate {
+                       public ServerDelegate {
  public:
   ClipboardModel();
   virtual ~ClipboardModel() = default;
@@ -28,7 +28,7 @@ class ClipboardModel : public SimpleObservable<ClipboardModelObserver>,
   // ClipboardObserver overrides
   void OnTextUpdated(const std::string& value) override;
 
-  // Server::Delegate overrides
+  // Delegate overrides
   void ProcessSyncData(ClipboardData this_host_data,
                        std::vector<HostData> data) override;
   void ProcessNewHost(const HostId& id, const std::string& name) override;
