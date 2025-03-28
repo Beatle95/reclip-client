@@ -36,7 +36,7 @@ target_link_libraries(
 enable_testing()
 
 add_executable(unit_tests null.cc)
-target_link_libraries(unit_tests PUBLIC gtest_main gmock reclip_core)
+target_link_libraries(unit_tests PUBLIC gtest_main gmock reclip_core reclip_ui)
 add_test(NAME unit_tests COMMAND unit_tests)
 # unit_tests
 

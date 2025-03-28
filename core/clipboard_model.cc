@@ -36,8 +36,6 @@ void ClipboardModel::OnTextUpdated(const std::string& str) {
 }
 
 bool ClipboardModel::AdoptThisHostData(std::string name, ClipboardData data) {
-  DLOG(INFO) << "[EVENT] ClipboardModel has adopted this host data";
-
   bool result = true;
   if (name != this_host_data_.name) {
     // Our name is the right one, so we don't want to update it.
@@ -46,7 +44,8 @@ bool ClipboardModel::AdoptThisHostData(std::string name, ClipboardData data) {
 
   auto& this_data = this_host_data_.data;
   if (this_data != data) {
-    if (this_data.text.empty()) {
+    DLOG(INFO) << "[EVENT] ClipboardModel has received unequal this host data";
+    if (this_data.text.empty() && !data.text.empty()) {
       this_data.text.insert(this_data.text.end(),
                             std::make_move_iterator(data.text.begin()),
                             std::make_move_iterator(data.text.end()));
@@ -58,6 +57,8 @@ bool ClipboardModel::AdoptThisHostData(std::string name, ClipboardData data) {
       // more precisely.
       result = false;
     }
+  } else {
+    DLOG(INFO) << "[EVENT] ClipboardModel has received equal this host data";
   }
   return result;
 }

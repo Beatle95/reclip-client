@@ -12,10 +12,11 @@ class HostClipboardView : public QWidget {
  public:
   explicit HostClipboardView(const QString& visible_name = {});
   void SetName(const QString& visible_name);
-  
+
   void PushTop(const QString& text);
   void PopBottom();
   void Clear();
+  size_t GetTextItemsCount() const;
 
  private slots:
   void ItemClicked();

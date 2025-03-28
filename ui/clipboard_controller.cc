@@ -7,6 +7,7 @@
 namespace reclip {
 namespace {
 constexpr uint32_t kThisHostIndex = 0;
+constexpr uint32_t kThisHostOffset = 1;
 }
 
 ClipboardController::ClipboardController(ClipboardModel* model,
@@ -42,23 +43,23 @@ void ClipboardController::OnThisTextPoped() {
 }
 
 void ClipboardController::OnTextPushed(size_t host_index) {
-  OnTextPushedImpl(
-      kThisHostIndex + host_index,
-      QString::fromStdString(model_->GetHostData(host_index).data.text.front()));
+  OnTextPushedImpl(kThisHostOffset + host_index,
+                   QString::fromStdString(
+                       model_->GetHostData(host_index).data.text.front()));
 }
 
 void ClipboardController::OnTextPoped(size_t host_index) {
-  OnTextPopedImpl(kThisHostIndex + host_index);
+  OnTextPopedImpl(kThisHostOffset + host_index);
 }
 
 void ClipboardController::OnHostUpdated(size_t host_index) {
-  const auto view_index = kThisHostIndex + host_index;
+  const auto view_index = kThisHostOffset + host_index;
   assert(view_index <= content_->HostsCount());
   if (view_index == content_->HostsCount()) {
     content_->AddHostView();
   }
 
-  auto* view = content_->GetHostView(kThisHostIndex + host_index);
+  auto* view = content_->GetHostView(kThisHostOffset + host_index);
   assert(view);
   PopulateData(model_->GetHostData(host_index), *view);
 }
@@ -70,7 +71,7 @@ void ClipboardController::OnThisHostDataReset() {
 }
 
 void ClipboardController::OnHostsDataReset() {
-  content_->RemoveHostViews(kThisHostIndex + 1);
+  content_->RemoveHostViews(kThisHostIndex + kThisHostOffset);
   ShowHostsModelData();
 }
 
@@ -80,7 +81,7 @@ void ClipboardController::OnItemClicked(uint32_t host_index,
   if (host_index == kThisHostIndex) {
     data = &model_->GetThisHostData();
   } else {
-    data = &model_->GetHostData(host_index - 1);
+    data = &model_->GetHostData(host_index - kThisHostOffset);
   }
 
   if (item_index >= data->data.text.size()) {

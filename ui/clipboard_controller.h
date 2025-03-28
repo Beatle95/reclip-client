@@ -29,6 +29,8 @@ class ClipboardController : public ClipboardModelObserver,
   // ContentWindow::Delegate overrides
   void OnItemClicked(uint32_t host_index, uint32_t item_index) override;
 
+  ContentWindow* GetContentWindowForTests() const { return content_.get(); }
+
  private:
   void PopulateData(const HostData& model_data, HostClipboardView& view);
   void ShowHostsModelData();

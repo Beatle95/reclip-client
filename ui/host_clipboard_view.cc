@@ -45,10 +45,14 @@ void HostClipboardView::PopBottom() {
 
 void HostClipboardView::Clear() {
   auto* layout = content_->layout();
-  assert(layout->count() != 0);
   while (layout->count() != 0) {
     delete layout->itemAt(0)->widget();
   }
+}
+
+size_t HostClipboardView::GetTextItemsCount() const {
+  auto* layout = content_->layout();
+  return static_cast<size_t>(layout->count());
 }
 
 void HostClipboardView::ItemClicked() {

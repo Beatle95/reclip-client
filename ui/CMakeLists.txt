@@ -18,5 +18,5 @@ target_link_libraries(
 
 target_sources(
     unit_tests PRIVATE
-    # TODO:
+    clipboard_controller_integration_test.cc
 )
