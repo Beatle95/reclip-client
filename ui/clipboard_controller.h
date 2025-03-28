@@ -18,10 +18,13 @@ class ClipboardController : public ClipboardModelObserver,
   void HideUi();
 
   // ClipboardModelObserver overrides
+  void OnThisItemPushed() override;
+  void OnThisItemPoped() override;
   void OnItemPushed(size_t host_index) override;
   void OnItemPoped(size_t host_index) override;
-  void OnHostAdded(size_t host_index) override;
-  void OnModelReset() override;
+  void OnHostUpdated(size_t host_index) override;
+  void OnThisHostDataUpated() override;
+  void OnHostsDataUpdated() override;
 
   // ContentWindow::Delegate overrides
   void OnItemClicked(uint32_t host_index, uint32_t item_index) override;

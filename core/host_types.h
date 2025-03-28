@@ -15,8 +15,14 @@ struct ClipboardData {
 
 struct HostData {
   HostId id;
-  std::string visible_name;
+  std::string name;
   ClipboardData data;
 };
+
+bool operator==(const ClipboardData& lhs, const ClipboardData& rhs);
+bool operator!=(const ClipboardData& lhs, const ClipboardData& rhs);
+
+bool operator==(const HostData& lhs, const HostData& rhs);
+bool operator!=(const HostData& lhs, const HostData& rhs);
 
 }  // namespace reclip

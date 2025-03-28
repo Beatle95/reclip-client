@@ -1,15 +1,21 @@
 target_sources(
     reclip_communication PRIVATE
-    server_connection.h
-    server_connection_impl.h
-    server_connection_impl.cc
+    connection.h
+    connection_impl.h
+    connection_impl.cc
     server_impl.h
     server_impl.cc
+    messages.h
+    messages.cc
+    communication_host.h
+    communication_host.cc
+    client_server_types.h
 )
 
 target_link_libraries(
     reclip_communication PUBLIC
     Qt6::Core
+    Qt6::Network
 )
 
 target_sources(

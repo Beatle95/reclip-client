@@ -15,4 +15,12 @@ void Preferences::SetHostSecret(const HostId& id) {
 
 const HostId& Preferences::GetHostSecret() const { return id_; }
 
+void Preferences::SetServerIp(std::string_view ip) { server_ip_ = ip; }
+
+const std::string& Preferences::GetServerIp() const { return server_ip_; }
+
+void Preferences::SetServerPort(uint16_t port) { server_port_ = port; }
+
+uint16_t Preferences::GetServerPort() { return server_port_; }
+
 }  // namespace reclip

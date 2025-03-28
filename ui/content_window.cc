@@ -33,12 +33,12 @@ ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
   show();
 }
 
-void ContentWindow::PushTopHostText(const QString& text) {
+void ContentWindow::PushThisHostText(const QString& text) {
   assert(!host_views_.empty());
   host_views_[0]->PushTop(text);
 }
 
-void ContentWindow::PopBottomHostText() {
+void ContentWindow::PopThisHostText() {
   assert(!host_views_.empty());
   host_views_[0]->PopBottom();
 }

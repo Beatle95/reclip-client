@@ -2,7 +2,7 @@
 #include <string>
 #include <string_view>
 
-#include "base/host_types.h"
+#include "core/host_types.h"
 
 namespace reclip {
 
@@ -15,9 +15,16 @@ class Preferences {
   void SetHostSecret(const HostId& id);
   const HostId& GetHostSecret() const;
 
+  void SetServerIp(std::string_view ip);
+  const std::string& GetServerIp() const;
+  void SetServerPort(uint16_t port);
+  uint16_t GetServerPort();
+
  private:
   Preferences() = default;
   HostId id_;
+  std::string server_ip_;
+  uint16_t server_port_;
 };
 
 }  // namespace reclip

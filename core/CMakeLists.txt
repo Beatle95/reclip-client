@@ -4,8 +4,8 @@ target_sources(
     clipboard_model.cc
     clipboard.h
     clipboard.cc
-    server.h
-    client_data.h
+    host_types.h
+    host_types.cc
 )
 
 if(APPLE)

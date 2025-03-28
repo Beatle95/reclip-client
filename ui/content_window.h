@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "core/client_data.h"
-
 class QVBoxLayout;
 
 namespace reclip {
@@ -22,8 +20,8 @@ class ContentWindow : public QMainWindow {
 
   ~ContentWindow();
   explicit ContentWindow(Delegate* delegate);
-  void PushTopHostText(const QString& text);
-  void PopBottomHostText();
+  void PushThisHostText(const QString& text);
+  void PopThisHostText();
 
  private slots:
   void HostItemClicked(uint32_t element_index);

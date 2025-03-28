@@ -68,21 +68,21 @@ TEST_F(ClipboardModelTest, ProcessRemoteTextUpdate) {
     EXPECT_CALL(observer(), OnItemPushed(_)).Times(0);
     EXPECT_EQ(model_->GetHostsCount(), 1);
     EXPECT_TRUE(GetTextData(0).empty());
-    model_->ProcessNewText(Preferences::GetInstance().GetHostSecret(), "text");
+    model_->AddHostText(Preferences::GetInstance().GetHostSecret(), "text");
     // Must be rejected.
     EXPECT_TRUE(GetTextData(0).empty());
   }
 
   {
     EXPECT_CALL(observer(), OnItemPushed(_)).Times(0);
-    model_->ProcessNewText(kNewHostId, "text");
+    model_->AddHostText(kNewHostId, "text");
     // Must be rejected.
     EXPECT_EQ(model_->GetHostsCount(), 1);
   }
 
   {
     EXPECT_CALL(observer(), OnHostAdded(_)).Times(1);
-    model_->ProcessNewHost(kNewHostId, "");
+    model_->SetHostInfo(kNewHostId, "");
     EXPECT_EQ(model_->GetHostsCount(), 2);
     EXPECT_TRUE(GetTextData(0).empty());
     EXPECT_TRUE(GetTextData(1).empty());
@@ -90,7 +90,7 @@ TEST_F(ClipboardModelTest, ProcessRemoteTextUpdate) {
 
   {
     EXPECT_CALL(observer(), OnItemPushed(1)).Times(1);
-    model_->ProcessNewText(kNewHostId, "text");
+    model_->AddHostText(kNewHostId, "text");
     EXPECT_TRUE(GetTextData(0).empty());
     EXPECT_EQ(GetTextData(1).size(), 1u);
   }
@@ -98,7 +98,7 @@ TEST_F(ClipboardModelTest, ProcessRemoteTextUpdate) {
   EXPECT_CALL(observer(), OnItemPoped(1)).Times(2);
   for (size_t i = 0; i < kClipboardSizeMax + 1; ++i) {
     EXPECT_CALL(observer(), OnItemPushed(1)).Times(1);
-    model_->ProcessNewText(kNewHostId, std::format("text_{}", i));
+    model_->AddHostText(kNewHostId, std::format("text_{}", i));
     EXPECT_EQ(GetTextData(1).size(), std::min(i + 2, kClipboardSizeMax));
   }
   for (size_t i = 0; i < kClipboardSizeMax; ++i) {

@@ -1,46 +1,54 @@
 #pragma once
 #include <vector>
 
-#include "base/host_types.h"
 #include "base/observers_list.h"
-#include "core/client_data.h"
 #include "core/clipboard_observer.h"
-#include "core/server.h"
+#include "core/host_types.h"
 
 namespace reclip {
 
 class ClipboardModelObserver : public CheckedObserver {
  public:
   virtual ~ClipboardModelObserver() = default;
+
+  virtual void OnThisItemPushed() = 0;
+  virtual void OnThisItemPoped() = 0;
+
+  virtual void OnHostUpdated(size_t host_index) = 0;
   virtual void OnItemPushed(size_t host_index) = 0;
   virtual void OnItemPoped(size_t host_index) = 0;
-  virtual void OnHostAdded(size_t host_index) = 0;
-  virtual void OnModelReset() = 0;
+
+  virtual void OnThisHostDataUpated() = 0;
+  virtual void OnHostsDataUpdated() = 0;
 };
 
 class ClipboardModel : public SimpleObservable<ClipboardModelObserver>,
-                       public ClipboardObserver,
-                       public ServerDelegate {
+                       public ClipboardObserver {
  public:
   ClipboardModel();
   virtual ~ClipboardModel() = default;
 
-  // ClipboardObserver overrides
+  // ClipboardObserver overrides:
   void OnTextUpdated(const std::string& value) override;
 
-  // Delegate overrides
-  void ProcessSyncData(ClipboardData this_host_data,
-                       std::vector<HostData> data) override;
-  void ProcessNewHost(const HostId& id, const std::string& name) override;
-  bool ProcessNewText(const HostId& id, const std::string& text) override;
+  // Returns true if data was fully adopted (i.e. after this call data inside
+  // model is exactly the same as this function's arguments).
+  bool AdoptThisHostData(std::string name, ClipboardData data);
+  void ResetHostsData(std::vector<HostData> other_hosts_data);
+  void SetHostData(HostData data);
+  // Returns false, if host with such id was not found.
+  bool AddHostText(const HostId& id, const std::string& text);
+  bool IsHostExists(const HostId& id) const;
 
   size_t GetHostsCount() const;
   const HostData& GetHostData(size_t host_index) const;
+  const HostData& GetThisHostData() const;
 
  private:
   void ProcessNewTextImpl(size_t index, const std::string& text);
 
-  std::vector<HostData> hosts_;
+  HostData this_host_data_;
+  std::vector<HostData> hosts_data_;
 };
 
 }  // namespace reclip
