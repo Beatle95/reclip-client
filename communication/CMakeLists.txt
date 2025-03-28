@@ -5,8 +5,9 @@ target_sources(
     connection_impl.cc
     server_impl.h
     server_impl.cc
-    messages.h
-    messages.cc
+    message_types.h
+    serialization.h
+    serialization.cc
     communication_host.h
     communication_host.cc
     client_server_types.h

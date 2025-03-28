@@ -20,7 +20,7 @@ class ApplicationMain : public QApplication {
  private:
   void ShowUi();
   void HideUi();
-  void InitId();
+  void PrefInit();
 
   std::unique_ptr<Clipboard> clipboard_;
   std::unique_ptr<ClipboardModel> model_;

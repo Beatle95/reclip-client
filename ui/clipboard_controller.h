@@ -18,18 +18,23 @@ class ClipboardController : public ClipboardModelObserver,
   void HideUi();
 
   // ClipboardModelObserver overrides
-  void OnThisItemPushed() override;
-  void OnThisItemPoped() override;
-  void OnItemPushed(size_t host_index) override;
-  void OnItemPoped(size_t host_index) override;
+  void OnThisTextPushed() override;
+  void OnThisTextPoped() override;
+  void OnTextPushed(size_t host_index) override;
+  void OnTextPoped(size_t host_index) override;
   void OnHostUpdated(size_t host_index) override;
-  void OnThisHostDataUpated() override;
-  void OnHostsDataUpdated() override;
+  void OnThisHostDataReset() override;
+  void OnHostsDataReset() override;
 
   // ContentWindow::Delegate overrides
   void OnItemClicked(uint32_t host_index, uint32_t item_index) override;
 
  private:
+  void PopulateData(const HostData& model_data, HostClipboardView& view);
+  void ShowHostsModelData();
+  void OnTextPushedImpl(size_t index, const QString& text);
+  void OnTextPopedImpl(size_t index);
+
   std::unique_ptr<ContentWindow> content_;
   ClipboardModel* model_;
   Clipboard* clipboard_;

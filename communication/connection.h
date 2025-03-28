@@ -2,6 +2,8 @@
 #include <QByteArray>
 #include <memory>
 
+#include "communication/message_types.h"
+
 namespace reclip {
 
 class Connection {
@@ -11,14 +13,16 @@ class Connection {
     virtual ~Delegate() = default;
     virtual void HandleConnected(bool is_connected) = 0;
     virtual void HandleDisconnected() = 0;
-    virtual void HandleReceieved(const QByteArray& data) = 0;
+    virtual void HandleReceieved(uint64_t id, ServerMessageType type,
+                                 const QByteArray& data) = 0;
   };
 
   virtual ~Connection() = default;
 
   virtual void Connect() = 0;
   virtual void Disconnect() = 0;
-  virtual bool SendMessage(const QByteArray& data) = 0;
+  virtual bool SendMessage(uint64_t id, ClientMessageType type,
+                           const QByteArray& data) = 0;
 };
 
 }  // namespace reclip

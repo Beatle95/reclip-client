@@ -10,9 +10,12 @@ namespace reclip {
 class HostClipboardView : public QWidget {
   Q_OBJECT
  public:
-  HostClipboardView(const QString& visible_name);
+  explicit HostClipboardView(const QString& visible_name = {});
+  void SetName(const QString& visible_name);
+  
   void PushTop(const QString& text);
   void PopBottom();
+  void Clear();
 
  private slots:
   void ItemClicked();
@@ -22,6 +25,7 @@ class HostClipboardView : public QWidget {
 
  private:
   QWidget* content_;
+  QLabel* name_;
 };
 
 }  // namespace reclip

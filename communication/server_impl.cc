@@ -5,7 +5,7 @@
 
 #include "base/log.h"
 #include "communication/connection_impl.h"
-#include "communication/messages.h"
+#include "communication/serialization.h"
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
@@ -15,9 +15,7 @@ constexpr auto kNetworkTimeoutInterval = 15s;
 namespace reclip {
 
 namespace {
-
 ServerImpl::TestHelper* g_test_helper = nullptr;
-
 }
 
 ServerImpl::TestHelper::TestHelper() {
@@ -72,13 +70,14 @@ void ServerImpl::HandleConnected(bool is_connected) {
 void ServerImpl::RequestFullSync() {
   assert(state_ == ConnectionState::kConnecting);
   state_ = ConnectionState::kSyncing;
-  auto data = SerializeSyncRequest();
-  if (!connection_->SendMessage(data.message)) {
+  const auto msg_id = GenerateId();
+  if (!connection_->SendMessage(msg_id, ClientMessageType::kFullSyncRequest,
+                                {})) {
     return;
   }
 
-  assert(!awaiting_responces_.contains(data.id));
-  auto& response = awaiting_responces_[data.id];
+  assert(!awaiting_responces_.contains(msg_id));
+  auto& response = awaiting_responces_[msg_id];
   response.callback = [this](const QByteArray& data) {
     assert(state_ == ConnectionState::kSyncing);
     auto response = ParseSyncResponse(data);
@@ -91,8 +90,8 @@ void ServerImpl::RequestFullSync() {
     state_ = ConnectionState::kConnected;
     connection_timer_.stop();
 
-    client_->OnFullSync(std::move(std::get<0>(response.value())),
-                        std::move(std::get<1>(response.value())));
+    client_->OnFullSync(std::move(response->this_host_data),
+                        std::move(response->hosts_data));
   };
   InitAndRunTimeoutTimer(response.timeout_timer);
 }
@@ -101,13 +100,14 @@ void ServerImpl::RequestHostSync(const HostId& id, HostSyncCallback callback) {
   if (state_ != ConnectionState::kConnected) {
     return;
   }
-  auto data = SerializeHostSencRequest(id);
-  if (!connection_->SendMessage(data.message)) {
+  const auto msg_id = GenerateId();
+  if (!connection_->SendMessage(msg_id, ClientMessageType::kHostSyncRequest,
+                                SerializeHostSencRequest(id))) {
     return;
   }
 
-  assert(!awaiting_responces_.contains(data.id));
-  auto& response = awaiting_responces_[data.id];
+  assert(!awaiting_responces_.contains(msg_id));
+  auto& response = awaiting_responces_[msg_id];
   response.callback = [this,
                        callback = std::move(callback)](const QByteArray& data) {
     if (state_ != ConnectionState::kConnected) {
@@ -123,14 +123,16 @@ void ServerImpl::SyncThisHost(const HostData& data) {
   if (state_ != ConnectionState::kConnected) {
     return;
   }
-  connection_->SendMessage(SerializeThisHostSync(data));
+  connection_->SendMessage(GenerateId(), ClientMessageType::kSyncThisHost,
+                           SerializeThisHostSync(data));
 }
 
 void ServerImpl::AddThisHostText(const std::string& text) {
   if (state_ != ConnectionState::kConnected) {
     return;
   }
-  connection_->SendMessage(SerializeTextUpdate(text));
+  connection_->SendMessage(GenerateId(), ClientMessageType::kHostTextUpdate,
+                           SerializeTextUpdate(text));
 }
 
 void ServerImpl::ProcessHostConnected(const QByteArray& data) {
@@ -164,8 +166,7 @@ void ServerImpl::ProcessHostTextUpdate(const QByteArray& data) {
     LOG(ERROR) << "Got wrong text update notification from server";
     return;
   }
-  client_->HostTextAdded(std::get<0>(text_data.value()),
-                         std::get<1>(text_data.value()));
+  client_->HostTextAdded(text_data->id, text_data->text);
 }
 
 void ServerImpl::ProcessHostSynced(const QByteArray& data) {
@@ -179,6 +180,8 @@ void ServerImpl::ProcessHostSynced(const QByteArray& data) {
   }
 }
 
+uint64_t ServerImpl::GenerateId() { return id_counter_++; }
+
 void ServerImpl::HandleDisconnected() {
   assert(state_ != ConnectionState::kDisconnected);
   assert(!reconnect_timer_.isActive());
@@ -189,53 +192,35 @@ void ServerImpl::HandleDisconnected() {
   awaiting_responces_.clear();
 }
 
-void ServerImpl::HandleReceieved(const QByteArray& data) {
-  const auto header_opt = ParseNetworkHeader(data);
-  if (!header_opt.has_value()) {
-    LOG(WARNING) << "Got server message with bad header";
-    return;
-  }
-
-  const auto& header = *header_opt;
-  switch (static_cast<MessageType>(header.type)) {
-    case MessageType::kServerHostConnected:
-      ProcessHostConnected(data.sliced(sizeof(NetworkHeader)));
+void ServerImpl::HandleReceieved(uint64_t id, ServerMessageType type,
+                                 const QByteArray& data) {
+  switch (type) {
+    case ServerMessageType::kHostConnected:
+      ProcessHostConnected(data);
       return;
-    case MessageType::kServerHostDisconnected:
-      ProcessHostDisconnected(data.sliced(sizeof(NetworkHeader)));
+    case ServerMessageType::kHostDisconnected:
+      ProcessHostDisconnected(data);
       return;
-    case MessageType::kServerTextUpdate:
-      ProcessHostTextUpdate(data.sliced(sizeof(NetworkHeader)));
+    case ServerMessageType::kTextUpdate:
+      ProcessHostTextUpdate(data);
       return;
-    case MessageType::kServerHostSynced:
-      ProcessHostSynced(data.sliced(sizeof(NetworkHeader)));
+    case ServerMessageType::kHostSynced:
+      ProcessHostSynced(data);
       return;
 
-    case MessageType::kServerResponseToClient: {
-      const auto it = awaiting_responces_.find(header.id);
+    case ServerMessageType::kServerResponse: {
+      const auto it = awaiting_responces_.find(id);
       if (it != awaiting_responces_.end()) {
-        it->second.callback(data.sliced(sizeof(NetworkHeader)));
+        it->second.callback(data);
         awaiting_responces_.erase(it);
       } else {
-        LOG(ERROR) << "Received server responce for unknown message id: "
-                   << header.id;
+        LOG(ERROR) << "Received server responce for unknown message id: " << id;
       }
       return;
     }
-
-    case MessageType::kClientsResponseToServer:
-      [[fallthrough]];
-    case MessageType::kFullSyncRequest:
-      [[fallthrough]];
-    case MessageType::kHostSyncRequest:
-      [[fallthrough]];
-    case MessageType::kHostTextUpdate:
-      [[fallthrough]];
-    case MessageType::kHostSyncData:
-      break;
   }
   LOG(ERROR) << "Server has sent the message with unexpected message type: "
-             << header.type;
+             << static_cast<int>(type);
 }
 
 ServerImpl::ConnectionState ServerImpl::GetStateForTesting() const {

@@ -20,8 +20,11 @@ class ContentWindow : public QMainWindow {
 
   ~ContentWindow();
   explicit ContentWindow(Delegate* delegate);
-  void PushThisHostText(const QString& text);
-  void PopThisHostText();
+
+  void RemoveHostViews(uint32_t start_index = 0);
+  HostClipboardView* AddHostView(const QString& name = {});
+  HostClipboardView* GetHostView(uint32_t index);
+  size_t HostsCount() const;
 
  private slots:
   void HostItemClicked(uint32_t element_index);

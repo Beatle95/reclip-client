@@ -48,7 +48,7 @@ void CommunicationHost::HostSynced(HostData data) {
   model_->SetHostData(std::move(data));
 }
 
-void CommunicationHost::OnThisItemPushed() {
+void CommunicationHost::OnThisTextPushed() {
   const auto& text_data = model_->GetThisHostData().data.text;
   assert(!text_data.empty());
   server_->AddThisHostText(text_data.front());

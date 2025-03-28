@@ -6,7 +6,6 @@
 #include <memory>
 
 #include "base/constants.h"
-#include "base/preferences.h"
 #include "base/scoped_observation.h"
 #include "core/clipboard_model.h"
 
@@ -15,10 +14,13 @@ using ::testing::_;
 
 class MockClipboardModelObserver : public ClipboardModelObserver {
  public:
-  MOCK_METHOD1(OnItemPushed, void(size_t));
-  MOCK_METHOD1(OnItemPoped, void(size_t));
-  MOCK_METHOD1(OnHostAdded, void(size_t));
-  MOCK_METHOD0(OnModelReset, void());
+  MOCK_METHOD0(OnThisTextPushed, void());
+  MOCK_METHOD0(OnThisTextPoped, void());
+  MOCK_METHOD1(OnHostUpdated, void(size_t));
+  MOCK_METHOD1(OnTextPushed, void(size_t));
+  MOCK_METHOD1(OnTextPoped, void(size_t));
+  MOCK_METHOD0(OnThisHostDataReset, void());
+  MOCK_METHOD0(OnHostsDataReset, void());
 };
 
 class ClipboardModelTest : public ::testing::Test {
@@ -26,8 +28,11 @@ class ClipboardModelTest : public ::testing::Test {
   ClipboardModelTest()
       : model_(std::make_unique<ClipboardModel>()),
         observer_(std::make_unique<MockClipboardModelObserver>()) {
-    Preferences::GetInstance().SetHostSecret("host");
     observation_.Reset(*observer_, *model_);
+  }
+
+  auto GetThisTextData() {
+    return model_->GetThisHostData().data.text;
   }
 
   auto GetTextData(size_t host_index) {
@@ -43,73 +48,56 @@ class ClipboardModelTest : public ::testing::Test {
   ScopedObservation<MockClipboardModelObserver, ClipboardModel> observation_;
 };
 
-TEST_F(ClipboardModelTest, HostTextUpdating) {
-  EXPECT_EQ(model_->GetHostsCount(), 1);
-  EXPECT_TRUE(GetTextData(0).empty());
-
-  EXPECT_CALL(observer(), OnItemPoped(0)).Times(1);
+TEST_F(ClipboardModelTest, ThisHostTextUpdating) {
+  EXPECT_TRUE(GetThisTextData().empty());
+  EXPECT_CALL(observer(), OnThisTextPushed()).Times(kClipboardSizeMax + 1);
+  EXPECT_CALL(observer(), OnThisTextPoped()).Times(1);
   for (size_t i = 0; i < kClipboardSizeMax + 1; ++i) {
-    EXPECT_CALL(observer(), OnItemPushed(0));
     model_->OnTextUpdated(std::format("text_{}", i));
-    EXPECT_EQ(GetTextData(0).size(), std::min(i + 1, kClipboardSizeMax));
+    EXPECT_EQ(GetThisTextData().size(), std::min(i + 1, kClipboardSizeMax));
   }
+  for (size_t i = 0; i < kClipboardSizeMax; ++i) {
+    ASSERT_LT(i, GetThisTextData().size());
+    EXPECT_EQ(GetThisTextData()[i], std::format("text_{}", kClipboardSizeMax - i))
+        << "Index was: " << i;
+  }
+  EXPECT_EQ(model_->GetHostsCount(), 0);
+}
+
+TEST_F(ClipboardModelTest, ProcessRemoteHostTextUpdate) {
+  constexpr HostId kNewHostId("new_host");
+  {
+    EXPECT_TRUE(GetThisTextData().empty());
+    EXPECT_EQ(model_->GetHostsCount(), 0);
+    EXPECT_FALSE(model_->AddHostText(kNewHostId, "text"));
+    EXPECT_TRUE(GetThisTextData().empty());
+  }
+  {
+    EXPECT_CALL(observer(), OnHostUpdated(_)).Times(1);
+    model_->SetHostData(HostData{.id = kNewHostId});
+    EXPECT_EQ(model_->GetHostsCount(), 1);
+    EXPECT_TRUE(GetThisTextData().empty());
+    EXPECT_TRUE(GetTextData(0).empty());
+  }
+  {
+    EXPECT_CALL(observer(), OnTextPushed(0)).Times(1);
+    model_->AddHostText(kNewHostId, "text");
+    EXPECT_TRUE(GetThisTextData().empty());
+    EXPECT_EQ(GetTextData(0).size(), 1u);
+  }
+
+  EXPECT_CALL(observer(), OnTextPoped(0)).Times(2);
+  for (size_t i = 0; i < kClipboardSizeMax + 1; ++i) {
+    EXPECT_CALL(observer(), OnTextPushed(0)).Times(1);
+    model_->AddHostText(kNewHostId, std::format("text_{}", i));
+    EXPECT_EQ(GetTextData(0).size(), std::min(i + 2, kClipboardSizeMax));
+  }
+
   for (size_t i = 0; i < kClipboardSizeMax; ++i) {
     ASSERT_LT(i, GetTextData(0).size());
     EXPECT_EQ(GetTextData(0)[i], std::format("text_{}", kClipboardSizeMax - i))
         << "Index was: " << i;
   }
-  EXPECT_EQ(model_->GetHostsCount(), 1);
-}
-
-TEST_F(ClipboardModelTest, ProcessRemoteTextUpdate) {
-  constexpr auto kNewHostId = "new_host";
-
-  {
-    EXPECT_CALL(observer(), OnItemPushed(_)).Times(0);
-    EXPECT_EQ(model_->GetHostsCount(), 1);
-    EXPECT_TRUE(GetTextData(0).empty());
-    model_->AddHostText(Preferences::GetInstance().GetHostSecret(), "text");
-    // Must be rejected.
-    EXPECT_TRUE(GetTextData(0).empty());
-  }
-
-  {
-    EXPECT_CALL(observer(), OnItemPushed(_)).Times(0);
-    model_->AddHostText(kNewHostId, "text");
-    // Must be rejected.
-    EXPECT_EQ(model_->GetHostsCount(), 1);
-  }
-
-  {
-    EXPECT_CALL(observer(), OnHostAdded(_)).Times(1);
-    model_->SetHostInfo(kNewHostId, "");
-    EXPECT_EQ(model_->GetHostsCount(), 2);
-    EXPECT_TRUE(GetTextData(0).empty());
-    EXPECT_TRUE(GetTextData(1).empty());
-  }
-
-  {
-    EXPECT_CALL(observer(), OnItemPushed(1)).Times(1);
-    model_->AddHostText(kNewHostId, "text");
-    EXPECT_TRUE(GetTextData(0).empty());
-    EXPECT_EQ(GetTextData(1).size(), 1u);
-  }
-
-  EXPECT_CALL(observer(), OnItemPoped(1)).Times(2);
-  for (size_t i = 0; i < kClipboardSizeMax + 1; ++i) {
-    EXPECT_CALL(observer(), OnItemPushed(1)).Times(1);
-    model_->AddHostText(kNewHostId, std::format("text_{}", i));
-    EXPECT_EQ(GetTextData(1).size(), std::min(i + 2, kClipboardSizeMax));
-  }
-  for (size_t i = 0; i < kClipboardSizeMax; ++i) {
-    ASSERT_LT(i, GetTextData(1).size());
-    EXPECT_EQ(GetTextData(1)[i], std::format("text_{}", kClipboardSizeMax - i))
-        << "Index was: " << i;
-  }
   // First must remain empty.
-  EXPECT_TRUE(GetTextData(0).empty());
-}
-
-TEST_F(ClipboardModelTest, SyncRemoteTest) {
-  // TODO:
+  EXPECT_TRUE(GetThisTextData().empty());
 }

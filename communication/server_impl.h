@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QTimer>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -42,7 +43,8 @@ class ServerImpl : public QObject, public Server, public Connection::Delegate {
   // Connection::Delegate overrides:
   void HandleConnected(bool is_connected) override;
   void HandleDisconnected() override;
-  void HandleReceieved(const QByteArray& data) override;
+  void HandleReceieved(uint64_t id, ServerMessageType type,
+                       const QByteArray& data) override;
 
   ConnectionState GetStateForTesting() const;
 
@@ -62,10 +64,12 @@ class ServerImpl : public QObject, public Server, public Connection::Delegate {
   void ProcessHostDisconnected(const QByteArray& data);
   void ProcessHostTextUpdate(const QByteArray& data);
   void ProcessHostSynced(const QByteArray& data);
+  uint64_t GenerateId();
 
   Client* client_;
   std::unique_ptr<Connection> connection_;
   std::unordered_map<uint64_t, AwaitingResponce> awaiting_responces_;
+  uint64_t id_counter_ = 0;
 
   QTimer reconnect_timer_;
   QTimer connection_timer_;

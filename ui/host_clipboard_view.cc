@@ -11,9 +11,9 @@ HostClipboardView::HostClipboardView(const QString& visible_name) {
   auto* layout = new QVBoxLayout;
   layout->setAlignment(Qt::AlignTop);
 
-  auto* host = new QLabel(visible_name, this);
-  host->setAlignment(Qt::AlignHCenter);
-  layout->addWidget(host);
+  name_ = new QLabel(visible_name, this);
+  name_->setAlignment(Qt::AlignHCenter);
+  layout->addWidget(name_);
   content_ = new QWidget(this);
   layout->addWidget(content_);
 
@@ -24,6 +24,10 @@ HostClipboardView::HostClipboardView(const QString& visible_name) {
 
   setFixedWidth(300);
   setLayout(layout);
+}
+
+void HostClipboardView::SetName(const QString& visible_name) {
+  name_->setText(visible_name);
 }
 
 void HostClipboardView::PushTop(const QString& text) {
@@ -37,6 +41,14 @@ void HostClipboardView::PopBottom() {
   auto* layout = content_->layout();
   assert(layout->count() != 0);
   delete layout->itemAt(0)->widget();
+}
+
+void HostClipboardView::Clear() {
+  auto* layout = content_->layout();
+  assert(layout->count() != 0);
+  while (layout->count() != 0) {
+    delete layout->itemAt(0)->widget();
+  }
 }
 
 void HostClipboardView::ItemClicked() {

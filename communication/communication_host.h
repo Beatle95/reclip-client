@@ -20,13 +20,13 @@ class CommunicationHost : public Client, public ClipboardModelObserver {
   void HostSynced(HostData data) override;
 
   // ClipboardModelObserver overrides:
-  void OnThisItemPushed() override;
-  void OnThisItemPoped() override {}
+  void OnThisTextPushed() override;
+  void OnThisTextPoped() override {}
   void OnHostUpdated(size_t) override {}
-  void OnItemPushed(size_t) override {}
-  void OnItemPoped(size_t) override {}
-  void OnThisHostDataUpated() override {}
-  void OnHostsDataUpdated() override {}
+  void OnTextPushed(size_t) override {}
+  void OnTextPoped(size_t) override {}
+  void OnThisHostDataReset() override {}
+  void OnHostsDataReset() override {}
 
  private:
   void OnHostSynced(std::optional<HostData> data);

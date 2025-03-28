@@ -3,6 +3,7 @@
 #include <QTcpSocket>
 
 #include "communication/connection.h"
+#include "communication/message_types.h"
 
 namespace reclip {
 
@@ -16,11 +17,13 @@ class ServerConnectionImpl : public QObject, public Connection {
   // Connection overrides
   void Connect() override;
   void Disconnect() override;
-  bool SendMessage(const QByteArray& data) override;
+  bool SendMessage(uint64_t id, ClientMessageType type,
+                   const QByteArray& data) override;
 
  private slots:
   void OnConnected();
   void OnDisconnected();
+  void OnReadyRead();
   void OnError(QAbstractSocket::SocketError err);
 
  private:

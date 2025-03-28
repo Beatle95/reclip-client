@@ -17,7 +17,7 @@ namespace reclip {
 ApplicationMain::ApplicationMain(int argc, char** argv)
     : QApplication(argc, argv) {
   DLOG(INFO) << "Application::Ctor";
-  InitId();
+  PrefInit();
   model_ = std::make_unique<ClipboardModel>();
 
   clipboard_ = Clipboard::Create();
@@ -39,8 +39,7 @@ ApplicationMain::~ApplicationMain() {
   clipboard_->Stop();
 }
 
-void ApplicationMain::InitId() {
-  // TODO:
+void ApplicationMain::PrefInit() {
   Preferences::GetInstance().SetHostSecret("this_host_secret");
 }
 

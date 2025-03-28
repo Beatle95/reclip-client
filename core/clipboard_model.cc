@@ -25,12 +25,12 @@ void ClipboardModel::OnTextUpdated(const std::string& str) {
   auto& text_data = this_host_data_.data.text;
   text_data.push_front(str);
   for (auto* observer : observers_) {
-    observer->OnThisItemPushed();
+    observer->OnThisTextPushed();
   }
   while (text_data.size() > kClipboardSizeMax) {
     text_data.pop_back();
     for (auto* observer : observers_) {
-      observer->OnThisItemPoped();
+      observer->OnThisTextPoped();
     }
   }
 }
@@ -50,6 +50,9 @@ bool ClipboardModel::AdoptThisHostData(std::string name, ClipboardData data) {
       this_data.text.insert(this_data.text.end(),
                             std::make_move_iterator(data.text.begin()),
                             std::make_move_iterator(data.text.end()));
+      for (auto* observer : observers_) {
+        observer->OnThisHostDataReset();
+      }
     } else {
       // TODO: For now we just prefer local data, later we want to adopt them
       // more precisely.
@@ -68,7 +71,7 @@ void ClipboardModel::ResetHostsData(std::vector<HostData> other_hosts_data) {
                      std::make_move_iterator(other_hosts_data.end()));
 
   for (auto* observer : observers_) {
-    observer->OnHostsDataUpdated();
+    observer->OnHostsDataReset();
   }
 }
 
@@ -113,12 +116,12 @@ void ClipboardModel::ProcessNewTextImpl(size_t index, const std::string& text) {
   assert(index < hosts_data_.size());
   hosts_data_[index].data.text.push_front(text);
   for (auto* observer : observers_) {
-    observer->OnItemPushed(index);
+    observer->OnTextPushed(index);
   }
   while (hosts_data_[index].data.text.size() > kClipboardSizeMax) {
     hosts_data_[index].data.text.pop_back();
     for (auto* observer : observers_) {
-      observer->OnItemPoped(index);
+      observer->OnTextPoped(index);
     }
   }
 }

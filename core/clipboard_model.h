@@ -11,15 +11,15 @@ class ClipboardModelObserver : public CheckedObserver {
  public:
   virtual ~ClipboardModelObserver() = default;
 
-  virtual void OnThisItemPushed() = 0;
-  virtual void OnThisItemPoped() = 0;
+  virtual void OnThisTextPushed() = 0;
+  virtual void OnThisTextPoped() = 0;
 
   virtual void OnHostUpdated(size_t host_index) = 0;
-  virtual void OnItemPushed(size_t host_index) = 0;
-  virtual void OnItemPoped(size_t host_index) = 0;
+  virtual void OnTextPushed(size_t host_index) = 0;
+  virtual void OnTextPoped(size_t host_index) = 0;
 
-  virtual void OnThisHostDataUpated() = 0;
-  virtual void OnHostsDataUpdated() = 0;
+  virtual void OnThisHostDataReset() = 0;
+  virtual void OnHostsDataReset() = 0;
 };
 
 class ClipboardModel : public SimpleObservable<ClipboardModelObserver>,

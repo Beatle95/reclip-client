@@ -2,8 +2,12 @@
 
 #include "base/log.h"
 #include "ui/content_window.h"
+#include "ui/host_clipboard_view.h"
 
 namespace reclip {
+namespace {
+constexpr uint32_t kThisHostIndex = 0;
+}
 
 ClipboardController::ClipboardController(ClipboardModel* model,
                                          Clipboard* clipboard)
@@ -15,12 +19,11 @@ void ClipboardController::ShowUi() {
   LOG(INFO) << "Showing ui...";
   content_ = std::make_unique<ContentWindow>(this);
 
-  // Set up ui.
-  for (size_t i = 0; i < model_->GetHostsCount(); ++i) {
-    for (const auto& elem : model_->GetHostData(i).data.text) {
-      content_->PushThisHostText(QString::fromStdString(elem));
-    }
-  }
+  auto* this_view = content_->AddHostView();
+  assert(this_view);
+  PopulateData(model_->GetThisHostData(), *this_view);
+
+  ShowHostsModelData();
 }
 
 void ClipboardController::HideUi() {
@@ -28,49 +31,53 @@ void ClipboardController::HideUi() {
   content_.reset();
 }
 
-void ClipboardController::OnThisItemPushed() {
-  if (!content_) {
-    return;
-  }
-  const auto& data = model_->GetThisHostData().data.text;
-  content_->PushThisHostText(QString::fromStdString(data.front()));
+void ClipboardController::OnThisTextPushed() {
+  OnTextPushedImpl(
+      kThisHostIndex,
+      QString::fromStdString(model_->GetThisHostData().data.text.front()));
 }
 
-void ClipboardController::OnThisItemPoped() {
-  if (!content_) {
-    return;
-  }
-  content_->PopThisHostText();
+void ClipboardController::OnThisTextPoped() {
+  OnTextPopedImpl(kThisHostIndex);
 }
 
-void ClipboardController::OnItemPushed(size_t host_index) {
-  // TODO:
-  (void)host_index;
+void ClipboardController::OnTextPushed(size_t host_index) {
+  OnTextPushedImpl(
+      kThisHostIndex + host_index,
+      QString::fromStdString(model_->GetHostData(host_index).data.text.front()));
 }
 
-void ClipboardController::OnItemPoped(size_t host_index) {
-  // TODO:
-  (void)host_index;
+void ClipboardController::OnTextPoped(size_t host_index) {
+  OnTextPopedImpl(kThisHostIndex + host_index);
 }
 
 void ClipboardController::OnHostUpdated(size_t host_index) {
-  // TODO:
-  (void)host_index;
+  const auto view_index = kThisHostIndex + host_index;
+  assert(view_index <= content_->HostsCount());
+  if (view_index == content_->HostsCount()) {
+    content_->AddHostView();
+  }
+
+  auto* view = content_->GetHostView(kThisHostIndex + host_index);
+  assert(view);
+  PopulateData(model_->GetHostData(host_index), *view);
 }
 
-void ClipboardController::OnThisHostDataUpated() {
-  // TODO:
+void ClipboardController::OnThisHostDataReset() {
+  auto* this_view = content_->GetHostView(kThisHostIndex);
+  assert(this_view);
+  PopulateData(model_->GetThisHostData(), *this_view);
 }
 
-void ClipboardController::OnHostsDataUpdated() {
-  // TODO:
+void ClipboardController::OnHostsDataReset() {
+  content_->RemoveHostViews(kThisHostIndex + 1);
+  ShowHostsModelData();
 }
 
 void ClipboardController::OnItemClicked(uint32_t host_index,
                                         uint32_t item_index) {
   const HostData* data = nullptr;
-  // TODO:
-  if (host_index == 0) {
+  if (host_index == kThisHostIndex) {
     data = &model_->GetThisHostData();
   } else {
     data = &model_->GetHostData(host_index - 1);
@@ -81,6 +88,42 @@ void ClipboardController::OnItemClicked(uint32_t host_index,
     return;
   }
   clipboard_->WriteText(data->data.text[item_index]);
+}
+
+void ClipboardController::PopulateData(const HostData& model_data,
+                                       HostClipboardView& view) {
+  view.SetName(QString::fromStdString(model_data.name));
+  view.Clear();
+  for (const auto& elem : model_data.data.text) {
+    view.PushTop(QString::fromStdString(elem));
+  }
+}
+
+void ClipboardController::ShowHostsModelData() {
+  for (size_t i = 0; i < model_->GetHostsCount(); ++i) {
+    auto& model_data = model_->GetHostData(i);
+    auto* view = content_->AddHostView(QString::fromStdString(model_data.name));
+    assert(view);
+    PopulateData(model_data, *view);
+  }  
+}
+
+void ClipboardController::OnTextPushedImpl(size_t index, const QString& text) {
+  if (!content_) {
+    return;
+  }
+  HostClipboardView* view = content_->GetHostView(index);
+  assert(view);
+  view->PushTop(text);
+}
+
+void ClipboardController::OnTextPopedImpl(size_t index) {
+  if (!content_) {
+    return;
+  }
+  HostClipboardView* view = content_->GetHostView(index);
+  assert(view);
+  view->PopBottom();  
 }
 
 }  // namespace reclip

@@ -18,29 +18,40 @@ ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
   main_widget_ = new QWidget;
   scroll->setWidgetResizable(true);
   scroll->setWidget(main_widget_);
-
-  auto* layout = new QHBoxLayout;
-  main_widget_->setLayout(layout);
-
-  auto host_view = std::make_unique<HostClipboardView>("This device");
-  layout->addWidget(host_view.get());
-  connect(host_view.get(), &HostClipboardView::ElementClicked, this,
-          &ContentWindow::HostItemClicked);
-  host_views_.push_back(std::move(host_view));
+  main_widget_->setLayout(new QHBoxLayout);
 
   setCentralWidget(scroll);
   setMinimumSize(kMinSize);
   show();
 }
 
-void ContentWindow::PushThisHostText(const QString& text) {
-  assert(!host_views_.empty());
-  host_views_[0]->PushTop(text);
+void ContentWindow::RemoveHostViews(uint32_t start_index) {
+  if (start_index < host_views_.size()) {
+    host_views_.resize(start_index);
+  }
 }
 
-void ContentWindow::PopThisHostText() {
-  assert(!host_views_.empty());
-  host_views_[0]->PopBottom();
+HostClipboardView* ContentWindow::AddHostView(const QString& name) {
+  QLayout* layout = main_widget_->layout();
+  assert(layout != nullptr);
+
+  auto view = std::make_unique<HostClipboardView>(name);
+  layout->addWidget(view.get());
+  connect(view.get(), &HostClipboardView::ElementClicked, this,
+          &ContentWindow::HostItemClicked);
+  host_views_.push_back(std::move(view));
+  return host_views_.back().get();
+}
+
+HostClipboardView* ContentWindow::GetHostView(uint32_t index) {
+  if (index >= host_views_.size()) {
+    return nullptr;
+  }
+  return host_views_[index].get();
+}
+
+size_t ContentWindow::HostsCount() const {
+  return host_views_.size();
 }
 
 void ContentWindow::HostItemClicked(uint32_t element_index) {
