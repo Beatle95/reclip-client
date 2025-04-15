@@ -28,8 +28,8 @@ ServerImpl::TestHelper::~TestHelper() {
   g_test_helper = nullptr;
 }
 
-ServerImpl::ServerImpl(Client& client)
-    : client_(&client),
+ServerImpl::ServerImpl(ServerDelegate& delegate)
+    : delegate_(&delegate),
       connection_(g_test_helper
                       ? g_test_helper->CreateConnection()
                       : std::make_unique<ServerConnectionImpl>(*this)) {
@@ -90,8 +90,8 @@ void ServerImpl::RequestFullSync() {
     state_ = ConnectionState::kConnected;
     connection_timer_.stop();
 
-    client_->OnFullSync(std::move(response->this_host_data),
-                        std::move(response->hosts_data));
+    delegate_->OnFullSync(std::move(response->this_host_data),
+                          std::move(response->hosts_data));
   };
   InitAndRunTimeoutTimer(response.timeout_timer);
 }
@@ -140,7 +140,7 @@ void ServerImpl::ProcessHostConnected(const QByteArray& data) {
     return;
   }
   if (auto id = ParseHostId(data)) {
-    client_->HostConnected(id.value());
+    delegate_->HostConnected(id.value());
   } else {
     LOG(ERROR) << "Unable to parse connected host id";
   }
@@ -151,7 +151,7 @@ void ServerImpl::ProcessHostDisconnected(const QByteArray& data) {
     return;
   }
   if (auto id = ParseHostId(data)) {
-    client_->HostDisconnected(id.value());
+    delegate_->HostDisconnected(id.value());
   } else {
     LOG(ERROR) << "Unable to parse disconnected host id";
   }
@@ -166,7 +166,7 @@ void ServerImpl::ProcessHostTextUpdate(const QByteArray& data) {
     LOG(ERROR) << "Got wrong text update notification from server";
     return;
   }
-  client_->HostTextAdded(text_data->id, text_data->text);
+  delegate_->HostTextAdded(text_data->id, text_data->text);
 }
 
 void ServerImpl::ProcessHostSynced(const QByteArray& data) {
@@ -174,7 +174,7 @@ void ServerImpl::ProcessHostSynced(const QByteArray& data) {
     return;
   }
   if (auto host_data = ParseHostData(data)) {
-    client_->HostSynced(std::move(host_data.value()));
+    delegate_->HostSynced(std::move(host_data.value()));
   } else {
     LOG(ERROR) << "Error parsing host data in host sync notification";
   }

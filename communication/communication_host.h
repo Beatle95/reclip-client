@@ -2,17 +2,17 @@
 #include <memory>
 
 #include "base/scoped_observation.h"
-#include "communication/client_server_types.h"
+#include "communication/server.h"
 #include "core/clipboard_model.h"
 
 namespace reclip {
 
-class CommunicationHost : public Client, public ClipboardModelObserver {
+class CommunicationHost : public ServerDelegate, public ClipboardModelObserver {
  public:
   explicit CommunicationHost(ClipboardModel& model);
   ~CommunicationHost() override = default;
 
-  // Client overrides:
+  // ServerDelegate overrides:
   void OnFullSync(HostData, std::vector<HostData>) override;
   void HostConnected(const HostId& id) override;
   void HostDisconnected(const HostId& id) override;

@@ -8,9 +8,9 @@
 namespace reclip {
 
 // This interface describes Server->Client calls.
-class Client {
+class ServerDelegate {
  public:
-  virtual ~Client() = default;
+  virtual ~ServerDelegate() = default;
   virtual void OnFullSync(HostData, std::vector<HostData>) = 0;
   virtual void HostConnected(const HostId& id) = 0;
   virtual void HostDisconnected(const HostId& id) = 0;

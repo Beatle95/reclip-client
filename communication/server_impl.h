@@ -7,8 +7,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "communication/client_server_types.h"
 #include "communication/connection.h"
+#include "communication/server.h"
 #include "core/host_types.h"
 
 namespace reclip {
@@ -32,7 +32,7 @@ class ServerImpl : public QObject, public Server, public Connection::Delegate {
     virtual std::unique_ptr<Connection> CreateConnection() = 0;
   };
 
-  explicit ServerImpl(Client& client);
+  explicit ServerImpl(ServerDelegate& delegate);
   ~ServerImpl() override;
 
   // Server overrides:
@@ -66,7 +66,7 @@ class ServerImpl : public QObject, public Server, public Connection::Delegate {
   void ProcessHostSynced(const QByteArray& data);
   uint64_t GenerateId();
 
-  Client* client_;
+  ServerDelegate* delegate_;
   std::unique_ptr<Connection> connection_;
   std::unordered_map<uint64_t, AwaitingResponce> awaiting_responces_;
   uint64_t id_counter_ = 0;

@@ -3,6 +3,7 @@ target_sources(
     connection.h
     connection_impl.h
     connection_impl.cc
+    server.h
     server_impl.h
     server_impl.cc
     message_types.h
@@ -10,7 +11,6 @@ target_sources(
     serialization.cc
     communication_host.h
     communication_host.cc
-    client_server_types.h
 )
 
 target_link_libraries(
