@@ -28,7 +28,7 @@ SerializationTestHelper::~SerializationTestHelper() {
   g_test_helper = nullptr;
 }
 
-QByteArray SerializeHostSencRequest(const HostId& id) {
+QByteArray SerializeHostSyncRequest(const HostId& id) {
   // TODO:
   (void)id;
   return {};

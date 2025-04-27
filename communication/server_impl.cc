@@ -102,7 +102,7 @@ void ServerImpl::RequestHostSync(const HostId& id, HostSyncCallback callback) {
   }
   const auto msg_id = GenerateId();
   if (!connection_->SendMessage(msg_id, ClientMessageType::kHostSyncRequest,
-                                SerializeHostSencRequest(id))) {
+                                SerializeHostSyncRequest(id))) {
     return;
   }
 
