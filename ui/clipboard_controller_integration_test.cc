@@ -61,11 +61,11 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
 
   model().ResetHostsData({
-      HostData{.name = "host1",
-               .id = "host_id1",
+      HostData{.id = "host_id1",
+               .name = "host1",
                .data = ClipboardData{.text = {"text0"}}},
-      HostData{.name = "host2",
-               .id = "host_id2",
+      HostData{.id = "host_id2",
+               .name = "host2",
                .data = ClipboardData{.text = {"text1", "text2"}}},
   });
   ASSERT_EQ(window->HostsCount(), 3);
@@ -77,8 +77,8 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   ASSERT_EQ(window->HostsCount(), 1);
 
   model().SetHostData(
-      HostData{.name = "host",
-               .id = "host_id3",
+      HostData{.id = "host_id3",
+               .name = "host",
                .data = ClipboardData{.text = {"text1", "text2"}}});
   ASSERT_EQ(window->HostsCount(), 2u);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);

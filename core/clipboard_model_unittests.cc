@@ -74,7 +74,7 @@ TEST_F(ClipboardModelTest, ProcessRemoteHostTextUpdate) {
   }
   {
     EXPECT_CALL(observer(), OnHostUpdated(_)).Times(1);
-    model_->SetHostData(HostData{.id = kNewHostId});
+    model_->SetHostData(HostData{.id = kNewHostId, .name = {}, .data = {}});
     EXPECT_EQ(model_->GetHostsCount(), 1);
     EXPECT_TRUE(GetThisTextData().empty());
     EXPECT_TRUE(GetTextData(0).empty());
