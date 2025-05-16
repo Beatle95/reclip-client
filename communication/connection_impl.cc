@@ -1,5 +1,8 @@
 #include "communication/connection_impl.h"
 
+#include <cassert>
+
+#include "base/byte_swap.h"
 #include "base/log.h"
 #include "base/preferences.h"
 
@@ -7,20 +10,15 @@ namespace reclip {
 namespace {
 
 struct NetworkHeader {
-  uint64_t length;  // Length of the message without len field.
   uint64_t id;      // Unique id of the message.
   uint16_t type;    // Value of MessageType enum.
 };
 
-std::optional<NetworkHeader> ParseNetworkHeader(const QByteArray& data) {
-  if (static_cast<size_t>(data.size()) < sizeof(NetworkHeader)) {
-    return {};
-  }
-  // TODO: swap byte order.
-  NetworkHeader header;
+void ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
+  assert(static_cast<size_t>(data.size()) >= sizeof(NetworkHeader));
   std::memcpy(reinterpret_cast<char*>(&header), data.data(), sizeof(header));
-  assert(header.length == data.size() - sizeof(header.length));
-  return header;
+  header.id = ntoh(header.id);
+  header.type = ntoh(header.type);
 }
 
 }  // namespace
@@ -67,13 +65,10 @@ void ServerConnectionImpl::OnDisconnected() {
 void ServerConnectionImpl::OnReadyRead() {
   // TODO: it is not correct has to be rewritten.
   const auto data = socket_.readAll();
-  const auto header = ParseNetworkHeader(data);
-  if (!header.has_value()) {
-    LOG(ERROR) << "Server has sent message with incorrect header";
-    return;
-  }
-  delegate_->HandleReceieved(header->id,
-                             static_cast<ServerMessageType>(header->type),
+  NetworkHeader header;
+  ParseNetworkHeader(data, header);
+  delegate_->HandleReceieved(header.id,
+                             static_cast<ServerMessageType>(header.type),
                              data.sliced(sizeof(NetworkHeader)));
 }
 

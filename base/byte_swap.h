@@ -1,0 +1,27 @@
+#include <bit>
+
+namespace reclip {
+
+template <typename T>
+T ntoh(T value) {
+  if constexpr (std::endian::native == std::endian::big) {
+    return value;
+  } else if constexpr (std::endian::native == std::endian::little) {
+    return std::byteswap(value);
+  } else {
+    static_assert(false, "Unexpected platform endiannes");
+  }
+}
+
+template <typename T>
+T hton(T value) {
+  if constexpr (std::endian::native == std::endian::big) {
+    return value;
+  } else if constexpr (std::endian::native == std::endian::little) {
+    return std::byteswap(value);
+  } else {
+    static_assert(false, "Unexpected platform endiannes");
+  }
+}
+
+}  // namespace reclip

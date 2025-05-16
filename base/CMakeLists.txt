@@ -1,6 +1,7 @@
 target_sources(
     reclip_core PRIVATE
     constants.h
+    byte_swap.h
     log.h
     log.cc
     observers_list.h
