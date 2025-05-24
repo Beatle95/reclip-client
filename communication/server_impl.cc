@@ -124,7 +124,7 @@ void ServerImpl::SyncThisHost(const HostData& data) {
     return;
   }
   connection_->SendMessage(GenerateId(), ClientMessageType::kSyncThisHost,
-                           SerializeThisHostSync(data));
+                           SerializeHostSync(data));
 }
 
 void ServerImpl::AddThisHostText(const std::string& text) {

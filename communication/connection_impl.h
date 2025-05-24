@@ -3,6 +3,7 @@
 #include <QTcpSocket>
 
 #include "communication/connection.h"
+#include "communication/message_reassembler.h"
 #include "communication/message_types.h"
 
 namespace reclip {
@@ -29,6 +30,7 @@ class ServerConnectionImpl : public QObject, public Connection {
  private:
   Connection::Delegate* delegate_;
   QTcpSocket socket_;
+  MessageReassembler reassembler_;
   // This field will help us to distinguish between errors upon connection and
   // errors upon communication process.
   bool connected_ = false;

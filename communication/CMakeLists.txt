@@ -11,6 +11,8 @@ target_sources(
     serialization.cc
     communication_host.h
     communication_host.cc
+    message_reassembler.h
+    message_reassembler.cc
 )
 
 target_link_libraries(

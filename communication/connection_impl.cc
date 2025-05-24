@@ -1,6 +1,7 @@
 #include "communication/connection_impl.h"
 
 #include <cassert>
+#include <span>
 
 #include "base/byte_swap.h"
 #include "base/log.h"
@@ -10,9 +11,15 @@ namespace reclip {
 namespace {
 
 struct NetworkHeader {
-  uint64_t id;      // Unique id of the message.
-  uint16_t type;    // Value of MessageType enum.
+  uint64_t id;    // Unique id of the message.
+  uint16_t type;  // Value of MessageType enum.
 };
+
+struct NetworkHeaderWithLength {
+  uint64_t len;
+  NetworkHeader header;
+};
+static_assert(sizeof(NetworkHeaderWithLength) == sizeof(NetworkHeader) + sizeof(uint64_t));
 
 void ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
   assert(static_cast<size_t>(data.size()) >= sizeof(NetworkHeader));
@@ -46,9 +53,21 @@ void ServerConnectionImpl::Disconnect() { socket_.disconnectFromHost(); }
 
 bool ServerConnectionImpl::SendMessage(uint64_t id, ClientMessageType type,
                                        const QByteArray& data) {
-  (void)id;
-  (void)type;
-  (void)data;
+  NetworkHeaderWithLength full_header{
+      .len = sizeof(NetworkHeader) + data.size(),
+      .header = {.id = id, .type = static_cast<uint16_t>(type)}};
+  full_header.len = hton(full_header.len);
+  full_header.header.id = hton(full_header.header.id);
+  full_header.header.type = hton(full_header.header.type);
+  if (socket_.write(reinterpret_cast<const char*>(&full_header),
+                    sizeof(full_header)) != sizeof(full_header)) {
+    LOG(ERROR) << "Unable to send network header via socket";
+    return false;
+  }
+  if (socket_.write(data) != data.size()) {
+    LOG(ERROR) << "Unable to send data via socket";
+    return false;
+  }
   return true;
 }
 
@@ -63,13 +82,18 @@ void ServerConnectionImpl::OnDisconnected() {
 }
 
 void ServerConnectionImpl::OnReadyRead() {
-  // TODO: it is not correct has to be rewritten.
-  const auto data = socket_.readAll();
-  NetworkHeader header;
-  ParseNetworkHeader(data, header);
-  delegate_->HandleReceieved(header.id,
-                             static_cast<ServerMessageType>(header.type),
-                             data.sliced(sizeof(NetworkHeader)));
+  auto data = socket_.readAll();
+  if (!data.isEmpty()) {
+    reassembler_.Process(data);
+  }
+
+  while (reassembler_.HasMessage()) {
+    NetworkHeader header;
+    ParseNetworkHeader(data, header);
+    delegate_->HandleReceieved(header.id,
+                               static_cast<ServerMessageType>(header.type),
+                               data.mid(sizeof(NetworkHeader)));
+  }
 }
 
 void ServerConnectionImpl::OnError(QAbstractSocket::SocketError err) {

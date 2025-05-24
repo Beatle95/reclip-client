@@ -33,7 +33,7 @@ class SerializationTestHelper {
 
 QByteArray SerializeHostSyncRequest(const HostId& id);
 QByteArray SerializeTextUpdate(const std::string& text);
-QByteArray SerializeThisHostSync(const HostData& data);
+QByteArray SerializeHostSync(const HostData& data);
 
 std::optional<SyncResponse> ParseSyncResponse(const QByteArray& data);
 std::optional<HostId> ParseHostId(const QByteArray& data);
