@@ -8,17 +8,16 @@ namespace reclip {
 
 class MessageReassembler {
  public:
-  void Process(QByteArray& new_data);
-
+  void Process(const QByteArray& new_data);
   bool HasMessage() const;
-  QByteArray GetMessage();
+  QByteArray PopMessage();
 
  private:
-  QByteArray ProcessImpl(QByteArray data);
-  uint64_t ConsumeSizeValue(QByteArray& data);
+  size_t ProcessLen(const QByteArray& data);
+  size_t ProcessMsg(const QByteArray& data);
 
   std::queue<QByteArray> messages_;
-  QByteArray data_;
+  QByteArray data_leftover_;
   std::optional<uint64_t> size_;
 };
 
