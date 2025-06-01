@@ -18,7 +18,7 @@ class Preferences {
   void SetServerIp(std::string_view ip);
   const std::string& GetServerIp() const;
   void SetServerPort(uint16_t port);
-  uint16_t GetServerPort();
+  uint16_t GetServerPort() const;
 
  private:
   Preferences() = default;

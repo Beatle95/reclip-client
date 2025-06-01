@@ -32,13 +32,17 @@ target_link_libraries(
     reclip_app_main
 )
 
-# unit_tests
+# tests
 enable_testing()
 
 add_executable(unit_tests null.cc)
-target_link_libraries(unit_tests PUBLIC gtest_main gmock reclip_core reclip_ui)
+target_link_libraries(unit_tests PUBLIC gtest_main gmock)
 add_test(NAME unit_tests COMMAND unit_tests)
-# unit_tests
+
+add_executable(server_integration_tests null.cc)
+target_link_libraries(server_integration_tests PUBLIC gtest_main gmock)
+add_test(NAME server_integration_tests COMMAND server_integration_tests)
+# tests
 
 add_subdirectory(third_party)
 add_subdirectory(app_main)

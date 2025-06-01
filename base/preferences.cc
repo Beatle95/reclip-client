@@ -21,6 +21,6 @@ const std::string& Preferences::GetServerIp() const { return server_ip_; }
 
 void Preferences::SetServerPort(uint16_t port) { server_port_ = port; }
 
-uint16_t Preferences::GetServerPort() { return server_port_; }
+uint16_t Preferences::GetServerPort() const { return server_port_; }
 
 }  // namespace reclip

@@ -7,6 +7,12 @@ constexpr uint64_t kMaxMessageSize = 1 * 1024 * 1024 * 1024;
 
 namespace reclip {
 
+void MessageReassembler::Clear() {
+  messages_ = decltype(messages_){};
+  data_leftover_.clear();
+  size_.reset();
+}
+
 void MessageReassembler::Process(const QByteArray& new_data) {
   for (size_t i = 0; i < static_cast<size_t>(new_data.size());) {
     // Here must not be a lot of ussless allocations, because QByteArray is

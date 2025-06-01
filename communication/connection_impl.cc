@@ -5,21 +5,22 @@
 
 #include "base/byte_swap.h"
 #include "base/log.h"
-#include "base/preferences.h"
 
 namespace reclip {
 namespace {
 
 struct NetworkHeader {
-  uint64_t id;    // Unique id of the message.
-  uint16_t type;  // Value of MessageType enum.
+  uint64_t id;     // Unique id of the message.
+  uint16_t type;   // Value of MessageType enum.
+  char unused[6];  // Reserved.
 };
+static_assert(sizeof(NetworkHeader) == 16);
 
 struct NetworkHeaderWithLength {
   uint64_t len;
   NetworkHeader header;
 };
-static_assert(sizeof(NetworkHeaderWithLength) == sizeof(NetworkHeader) + sizeof(uint64_t));
+static_assert(sizeof(NetworkHeaderWithLength) == 24);
 
 void ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
   assert(static_cast<size_t>(data.size()) >= sizeof(NetworkHeader));
@@ -30,8 +31,9 @@ void ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
 
 }  // namespace
 
-ServerConnectionImpl::ServerConnectionImpl(Connection::Delegate& delegate)
-    : delegate_(&delegate) {
+ServerConnectionImpl::ServerConnectionImpl(Connection::Delegate& delegate,
+                                           const QString& ip, quint16 port)
+    : ip_(ip), port_(port), delegate_(&delegate) {
   connect(&socket_, &QTcpSocket::connected, this,
           &ServerConnectionImpl::OnConnected);
   connect(&socket_, &QTcpSocket::disconnected, this,
@@ -43,10 +45,8 @@ ServerConnectionImpl::ServerConnectionImpl(Connection::Delegate& delegate)
 }
 
 void ServerConnectionImpl::Connect() {
-  auto& prefs = Preferences::GetInstance();
-  socket_.connectToHost(
-      QHostAddress(QString::fromStdString(prefs.GetServerIp())),
-      prefs.GetServerPort());
+  assert(!connected_);
+  socket_.connectToHost(QHostAddress(ip_), port_);
 }
 
 void ServerConnectionImpl::Disconnect() { socket_.disconnectFromHost(); }
@@ -55,7 +55,7 @@ bool ServerConnectionImpl::SendMessage(uint64_t id, ClientMessageType type,
                                        const QByteArray& data) {
   NetworkHeaderWithLength full_header{
       .len = sizeof(NetworkHeader) + data.size(),
-      .header = {.id = id, .type = static_cast<uint16_t>(type)}};
+      .header = {.id = id, .type = static_cast<uint16_t>(type), .unused = {}}};
   full_header.len = hton(full_header.len);
   full_header.header.id = hton(full_header.header.id);
   full_header.header.type = hton(full_header.header.type);
@@ -73,6 +73,7 @@ bool ServerConnectionImpl::SendMessage(uint64_t id, ClientMessageType type,
 
 void ServerConnectionImpl::OnConnected() {
   connected_ = true;
+  reassembler_.Clear();
   delegate_->HandleConnected(true);
 }
 
@@ -88,11 +89,12 @@ void ServerConnectionImpl::OnReadyRead() {
   }
 
   while (reassembler_.HasMessage()) {
+    auto msg = reassembler_.PopMessage();
     NetworkHeader header;
-    ParseNetworkHeader(data, header);
+    ParseNetworkHeader(msg, header);
     delegate_->HandleReceieved(header.id,
                                static_cast<ServerMessageType>(header.type),
-                               data.mid(sizeof(NetworkHeader)));
+                               msg.mid(sizeof(NetworkHeader)));
   }
 }
 

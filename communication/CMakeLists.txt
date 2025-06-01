@@ -17,6 +17,7 @@ target_sources(
 
 target_link_libraries(
     reclip_communication PUBLIC
+    reclip_core
     Qt6::Core
     Qt6::Network
 )
@@ -24,9 +25,18 @@ target_link_libraries(
 target_sources(
     unit_tests PRIVATE
     communication_unittests.cc
+    message_reassembler_unittest.cc
 )
-
 target_link_libraries(
     unit_tests PUBLIC
+    reclip_communication
+)
+
+target_sources(
+    server_integration_tests PRIVATE
+    communication_protocol_sitest.cc
+)
+target_link_libraries(
+    server_integration_tests PUBLIC
     reclip_communication
 )

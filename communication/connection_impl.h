@@ -12,7 +12,8 @@ namespace reclip {
 class ServerConnectionImpl : public QObject, public Connection {
   Q_OBJECT
  public:
-  explicit ServerConnectionImpl(Connection::Delegate& delegate);
+  explicit ServerConnectionImpl(Connection::Delegate& delegate,
+                                const QString& ip, quint16 port);
   ~ServerConnectionImpl() override = default;
 
   // Connection overrides
@@ -28,6 +29,9 @@ class ServerConnectionImpl : public QObject, public Connection {
   void OnError(QAbstractSocket::SocketError err);
 
  private:
+  QString ip_;
+  quint16 port_;
+
   Connection::Delegate* delegate_;
   QTcpSocket socket_;
   MessageReassembler reassembler_;

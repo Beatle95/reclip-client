@@ -4,7 +4,7 @@
 
 #define LOG(severity) Log(reclip::Severity::_##severity)
 #ifdef NDEBUG
-#define DLOG(severity)
+#define DLOG(severity) NoOpLog()
 #else
 #define DLOG(severity) Log(reclip::Severity::_##severity)
 #endif
@@ -27,6 +27,14 @@ class Log {
 
  private:
   std::stringstream stream_;
+};
+
+class NoOpLog {
+ public:
+  template <typename T>
+  NoOpLog& operator<<(T&&) {
+    return *this;
+  }
 };
 
 }  // namespace reclip

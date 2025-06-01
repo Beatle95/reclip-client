@@ -4,6 +4,7 @@
 #include <chrono>
 
 #include "base/log.h"
+#include "base/preferences.h"
 #include "communication/connection_impl.h"
 #include "communication/serialization.h"
 
@@ -28,11 +29,15 @@ ServerImpl::TestHelper::~TestHelper() {
   g_test_helper = nullptr;
 }
 
-ServerImpl::ServerImpl(ServerDelegate& delegate)
-    : delegate_(&delegate),
-      connection_(g_test_helper
-                      ? g_test_helper->CreateConnection()
-                      : std::make_unique<ServerConnectionImpl>(*this)) {
+ServerImpl::ServerImpl(ServerDelegate& delegate) : delegate_(&delegate) {
+  if (g_test_helper) {
+    connection_ = g_test_helper->CreateConnection();
+  } else {
+    const auto prefs = Preferences::GetInstance();
+    connection_ = std::make_unique<ServerConnectionImpl>(
+        *this, QString::fromStdString(prefs.GetServerIp()),
+        prefs.GetServerPort());
+  }
   assert(connection_);
 
   reconnect_timer_.setInterval(0s);

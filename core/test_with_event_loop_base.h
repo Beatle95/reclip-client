@@ -13,7 +13,10 @@ class TestWithEventLoopBase : public ::testing::Test {
   ~TestWithEventLoopBase() override;
   void SetUp() override;
   void TearDown() override;
+
   void RunEventLoopUntilIdle();
+  void RunEventLoop();
+  void ExitEventLoop(int status = 0);
 
  private:
   std::unique_ptr<QCoreApplication> app_;

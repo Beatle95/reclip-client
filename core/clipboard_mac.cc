@@ -19,8 +19,8 @@ ClipboardMac::ClipboardMac()
 }
 
 void ClipboardMac::WriteText(const std::string& text) {
-  DLOG(INFO) << "[EVENT] Application placed text to clipboard: \""
-             << text.substr(0, kMaxContentLogSize)
+  LOG(INFO) << "[EVENT] Application placed text to clipboard\"";
+  DLOG(INFO) << text.substr(0, kMaxContentLogSize)
              << (text.size() > kMaxContentLogSize ? "...\"" : "\"");
   prev_text_ = QString::fromStdString(text);
   clipboard_->setText(prev_text_);

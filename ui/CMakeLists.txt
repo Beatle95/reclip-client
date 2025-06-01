@@ -18,5 +18,9 @@ target_link_libraries(
 
 target_sources(
     unit_tests PRIVATE
-    clipboard_controller_integration_test.cc
+    clipboard_controller_unittest.cc
+)
+target_link_libraries(
+    unit_tests PUBLIC
+    reclip_ui
 )

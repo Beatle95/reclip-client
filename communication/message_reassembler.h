@@ -8,6 +8,7 @@ namespace reclip {
 
 class MessageReassembler {
  public:
+  void Clear();
   void Process(const QByteArray& new_data);
   bool HasMessage() const;
   QByteArray PopMessage();
