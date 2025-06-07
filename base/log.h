@@ -1,5 +1,4 @@
 #pragma once
-#include <ostream>
 #include <sstream>
 
 #define LOG(severity) Log(reclip::Severity::_##severity)
@@ -8,6 +7,8 @@
 #else
 #define DLOG(severity) Log(reclip::Severity::_##severity)
 #endif
+
+class QString;
 
 namespace reclip {
 
@@ -19,9 +20,11 @@ class Log {
   explicit Log(Severity severity);
   ~Log();
 
+  Log& operator<<(const QString& val);
+
   template <typename T>
-  Log& operator<<(T&& val) {
-    stream_ << std::forward<T>(val);
+  Log& operator<<(const T& val) {
+    stream_ << val;
     return *this;
   }
 

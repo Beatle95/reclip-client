@@ -3,14 +3,11 @@
 
 #include <QTimer>
 #include <cassert>
-#include <chrono>
-#include <iostream>
 
 #include "communication/message_types.h"
 #include "communication/serialization.h"
 #include "communication/server.h"
 #include "communication/server_impl.h"
-#include "core/clipboard_model.h"
 #include "core/test_with_event_loop_base.h"
 
 using namespace reclip;
@@ -21,6 +18,9 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
  public:
   ~SerializationTestHelperImpl() override = default;
 
+  void SetIntroductionResult(auto&& val) { 
+    introduction_ = std::forward<decltype(val)>(val); 
+  }
   void SetSyncResult(auto&& val) { 
     sync_ = std::forward<decltype(val)>(val); 
   }
@@ -34,6 +34,9 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
     new_text_ = std::forward<decltype(val)>(val);
   }
 
+  IntroductionResponse ParseIntroductionResponse(const QByteArray&) override {
+    return introduction_;
+  }
   std::optional<SyncResponse> ParseSyncResponse(const QByteArray&) override {
     return sync_;
   }
@@ -48,6 +51,7 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
   }
 
  private:
+  IntroductionResponse introduction_;
   std::optional<SyncResponse> sync_;
   std::optional<HostId> host_id_;
   std::optional<HostData> host_data_;
@@ -88,9 +92,17 @@ class MockConnection : public Connection {
                               const QByteArray& data) -> bool {
           if (delegate_) {
             QTimer::singleShot(1ms, [=, this]() {
-              if (type == ClientMessageType::kFullSyncRequest) {
-                delegate_->HandleReceieved(
-                    id, ServerMessageType::kServerResponse, data);
+              switch (type) {
+                case ClientMessageType::kIntroduction:
+                  delegate_->HandleReceieved(
+                      id, ServerMessageType::kIntroduction, data);
+                  break;
+                case ClientMessageType::kFullSyncRequest:
+                  delegate_->HandleReceieved(
+                      id, ServerMessageType::kServerResponse, data);
+                  break;
+                default:
+                  break;
               }
             });
           }
@@ -145,6 +157,7 @@ class ServerTestBase : public TestWithEventLoopBase,
 namespace {
 SerializationTestHelperImpl CreateCommonSerializationHelper() {
   SerializationTestHelperImpl result;
+  result.SetIntroductionResult(IntroductionResponse{.success = true});
   result.SetSyncResult(SyncResponse{});
   result.SetHostIdResult(HostId{});
   result.SetHostDataResult(HostData{});
@@ -158,7 +171,7 @@ TEST_F(ServerTestBase, AutoReconnection) {
   ResetServer();
   ASSERT_NE(connection(), nullptr);
   EXPECT_CALL(*connection(), Connect).Times(1);
-  EXPECT_CALL(*connection(), SendMessage).Times(1);
+  EXPECT_CALL(*connection(), SendMessage).Times(2);
   EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
 
   WaitServerConnected();
@@ -167,7 +180,7 @@ TEST_F(ServerTestBase, AutoReconnection) {
 
   for (uint32_t i = 0u; i < 5u; ++i) {
     EXPECT_CALL(*connection(), Connect).Times(1);
-    EXPECT_CALL(*connection(), SendMessage).Times(1);
+    EXPECT_CALL(*connection(), SendMessage).Times(2);
     EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
 
     server()->HandleDisconnected();
@@ -184,7 +197,7 @@ TEST_F(ServerTestBase, ServerClientCommunication) {
   ResetServer();
   ASSERT_NE(connection(), nullptr);
   EXPECT_CALL(*connection(), Connect).Times(1);
-  EXPECT_CALL(*connection(), SendMessage).Times(1);
+  EXPECT_CALL(*connection(), SendMessage).Times(2);
   EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
   ASSERT_NE(connection(), nullptr);
   WaitServerConnected();

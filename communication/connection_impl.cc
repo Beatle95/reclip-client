@@ -1,10 +1,12 @@
 #include "communication/connection_impl.h"
 
 #include <cassert>
+#include <cstdint>
 #include <span>
 
 #include "base/byte_swap.h"
 #include "base/log.h"
+#include "communication/connection.h"
 
 namespace reclip {
 namespace {
@@ -22,11 +24,23 @@ struct NetworkHeaderWithLength {
 };
 static_assert(sizeof(NetworkHeaderWithLength) == 24);
 
-void ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
-  assert(static_cast<size_t>(data.size()) >= sizeof(NetworkHeader));
-  std::memcpy(reinterpret_cast<char*>(&header), data.data(), sizeof(header));
+template <typename T>
+bool FromRawBytes(std::span<const char> data, T& result) {
+  static_assert(std::is_trivially_copy_constructible_v<T>);
+  if (data.size() < sizeof(result)) {
+    return false;
+  }
+  std::memcpy(&result, data.data(), sizeof(result));
+  return true;
+}
+
+bool ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
+  if (!FromRawBytes(data, header)) {
+    return false;
+  }
   header.id = ntoh(header.id);
   header.type = ntoh(header.type);
+  return true;
 }
 
 }  // namespace
@@ -53,12 +67,19 @@ void ServerConnectionImpl::Disconnect() { socket_.disconnectFromHost(); }
 
 bool ServerConnectionImpl::SendMessage(uint64_t id, ClientMessageType type,
                                        const QByteArray& data) {
+  if (!connected_) {
+    assert(false && "Sending via disconnected connection");
+    return false;
+  }
+
   NetworkHeaderWithLength full_header{
       .len = sizeof(NetworkHeader) + data.size(),
       .header = {.id = id, .type = static_cast<uint16_t>(type), .unused = {}}};
   full_header.len = hton(full_header.len);
   full_header.header.id = hton(full_header.header.id);
   full_header.header.type = hton(full_header.header.type);
+  std::memset(full_header.header.unused, 0, sizeof(full_header.header.unused));
+
   if (socket_.write(reinterpret_cast<const char*>(&full_header),
                     sizeof(full_header)) != sizeof(full_header)) {
     LOG(ERROR) << "Unable to send network header via socket";
@@ -91,10 +112,14 @@ void ServerConnectionImpl::OnReadyRead() {
   while (reassembler_.HasMessage()) {
     auto msg = reassembler_.PopMessage();
     NetworkHeader header;
-    ParseNetworkHeader(msg, header);
-    delegate_->HandleReceieved(header.id,
-                               static_cast<ServerMessageType>(header.type),
-                               msg.mid(sizeof(NetworkHeader)));
+    if (ParseNetworkHeader(msg, header)) {
+      delegate_->HandleReceieved(header.id,
+                                 static_cast<ServerMessageType>(header.type),
+                                 msg.mid(sizeof(NetworkHeader)));
+    } else {
+      LOG(ERROR) << "Unable to parse network header (size was: " << msg.size()
+                 << ")";
+    }
   }
 }
 

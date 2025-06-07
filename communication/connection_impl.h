@@ -1,4 +1,5 @@
 #pragma once
+#include <QByteArray>
 #include <QObject>
 #include <QTcpSocket>
 
@@ -8,6 +9,7 @@
 
 namespace reclip {
 
+// TODO: Rename file.
 // This class abstracts away connection and communication with server.
 class ServerConnectionImpl : public QObject, public Connection {
   Q_OBJECT
@@ -32,9 +34,10 @@ class ServerConnectionImpl : public QObject, public Connection {
   QString ip_;
   quint16 port_;
 
-  Connection::Delegate* delegate_;
-  QTcpSocket socket_;
   MessageReassembler reassembler_;
+  QTcpSocket socket_;
+  Connection::Delegate* delegate_;
+
   // This field will help us to distinguish between errors upon connection and
   // errors upon communication process.
   bool connected_ = false;

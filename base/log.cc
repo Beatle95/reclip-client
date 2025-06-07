@@ -2,8 +2,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
-#include <filesystem>
-#include <fstream>
+#include <QString>
 #include <iostream>
 
 using namespace reclip;
@@ -23,11 +22,6 @@ std::string_view SeverityToStr(Severity val) {
   }
 }
 
-// std::filesystem::path GetCurrentLogFilePath() {
-//     // TODO:
-//     return std::filesystem::current_path() / "log.log";
-// }
-
 }  // namespace
 
 namespace reclip {
@@ -40,13 +34,12 @@ Log::Log(Severity severity) {
 }
 
 Log::~Log() {
-  // TODO:
-  // std::ofstream ofs;
-  // ofs.open(GetCurrentLogFilePath(), std::ios::binary | std::ios::app);
-  // if (ofs) {
-  //     ofs << stream_.str() << '\n';
-  // }
   std::cout << stream_.str() << '\n';
+}
+
+Log& Log::operator<<(const QString& val) {
+  stream_ << val.toStdString();
+  return *this;
 }
 
 }  // namespace reclip

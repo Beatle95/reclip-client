@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QTimer>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -21,6 +22,7 @@ class ServerImpl : public QObject, public Server, public Connection::Delegate {
   enum class ConnectionState {
     kDisconnected,
     kConnecting,
+    kIntroducing,
     kSyncing,
     kConnected
   };
@@ -49,22 +51,30 @@ class ServerImpl : public QObject, public Server, public Connection::Delegate {
   ConnectionState GetStateForTesting() const;
 
  private:
+  static constexpr auto kNetworkTimeoutInterval = std::chrono::seconds(15);
+
   using ResponceCallback = std::function<void(const QByteArray&)>;
   struct AwaitingResponce {
     ResponceCallback callback;
     QTimer timeout_timer;
   };
 
-  void InitAndRunTimeoutTimer(QTimer& timer);
-
   void ConnectImpl();
+  void SendIntroduction();
   void RequestFullSync();
 
+  void ProcessIntroduction(const QByteArray& data);
   void ProcessHostConnected(const QByteArray& data);
   void ProcessHostDisconnected(const QByteArray& data);
   void ProcessHostTextUpdate(const QByteArray& data);
   void ProcessHostSynced(const QByteArray& data);
+
   uint64_t GenerateId();
+  void InitResponseAwaiting(
+      uint64_t id, ResponceCallback callback,
+      std::chrono::seconds timeout = kNetworkTimeoutInterval);
+  void InitAndRunTimeoutTimer(QTimer& timer, std::chrono::seconds timeout);
+  void Reset();
 
   ServerDelegate* delegate_;
   std::unique_ptr<Connection> connection_;

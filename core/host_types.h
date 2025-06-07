@@ -4,6 +4,7 @@
 
 namespace reclip {
 
+// TODO: Make ID uint64_t.
 using HostId = std::string;
 using HostSecret = std::string;
 using ClipboardTextContainer = std::deque<std::string>;

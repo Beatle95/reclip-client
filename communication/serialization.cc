@@ -3,10 +3,12 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QVersionNumber>
 #include <cassert>
 
 constexpr char kHostIdKey[] = "ClientId";
 constexpr char kHostNameKey[] = "ClientName";
+constexpr char kWrongServerResponseFormat[] = "wrong server response format";
 
 namespace reclip {
 
@@ -46,6 +48,12 @@ SerializationTestHelper* g_test_helper = nullptr;
 
 }  // namespace
 
+QByteArray SerializeIntroduction(const HostSecret& id) {
+  QJsonObject root;
+  root["ClientSecretKey"] = QString::fromStdString(id);
+  return QJsonDocument(root).toJson(QJsonDocument::Compact);
+}
+
 QByteArray SerializeHostSyncRequest(const HostId& id) {
   QJsonObject root;
   root[kHostIdKey] = QString::fromStdString(id);
@@ -70,6 +78,44 @@ QByteArray SerializeHostSync(const HostData& data) {
   root["TextData"] = text;
 
   return QJsonDocument(root).toJson(QJsonDocument::Compact);
+}
+
+IntroductionResponse ParseIntroductionResponse(const QByteArray& data) {
+  if (g_test_helper) {
+    return g_test_helper->ParseIntroductionResponse(data);
+  }
+
+  IntroductionResponse result{.success = false};
+  auto doc = QJsonDocument::fromJson(data);
+  if (doc.isEmpty()) {
+    result.error = kWrongServerResponseFormat;
+    return result;
+  }
+  auto root = doc.object();
+  if (root.isEmpty()) {
+    result.error = kWrongServerResponseFormat;
+    return result;
+  }
+
+  const auto err = root.find("Error");
+  if (err != root.end()) {
+    result.error = err->toString(kWrongServerResponseFormat);
+    return result;
+  }
+  const auto version_it = root.find("Version");
+  if (version_it == root.end() || !version_it->isString()) {
+    result.error = kWrongServerResponseFormat;
+    return result;
+  }
+
+  const auto version = QVersionNumber::fromString(version_it->toString());
+  if (version.isNull()) {
+    result.error = "unable to parse version string";
+    return result;
+  }
+
+  result.success = true;
+  return result;
 }
 
 std::optional<SyncResponse> ParseSyncResponse(const QByteArray& data) {

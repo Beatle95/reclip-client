@@ -1,11 +1,11 @@
 #pragma once
 #include <QByteArray>
-#include <memory>
 
 #include "communication/message_types.h"
 
 namespace reclip {
 
+// TODO: Rename to server connection.
 class Connection {
  public:
   class Delegate {
