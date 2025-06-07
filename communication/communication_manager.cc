@@ -1,4 +1,4 @@
-#include "communication/communication_host.h"
+#include "communication/communication_manager.h"
 
 #include <cassert>
 
@@ -10,13 +10,14 @@ using namespace std::placeholders;
 
 namespace reclip {
 
-CommunicationHost::CommunicationHost(ClipboardModel& model) : model_(&model) {
+CommunicationManager::CommunicationManager(ClipboardModel& model)
+    : model_(&model) {
   server_ = std::make_unique<ServerImpl>(*this);
   model_observation_.Reset(*this, model);
 }
 
-void CommunicationHost::OnFullSync(HostData this_host_data,
-                                   std::vector<HostData> data) {
+void CommunicationManager::OnFullSync(HostData this_host_data,
+                                      std::vector<HostData> data) {
   model_->ResetHostsData(std::move(data));
   if (!model_->AdoptThisHostData(std::move(this_host_data.name),
                                  std::move(this_host_data.data))) {
@@ -24,37 +25,37 @@ void CommunicationHost::OnFullSync(HostData this_host_data,
   }
 }
 
-void CommunicationHost::HostConnected(const HostId& id) {
+void CommunicationManager::HostConnected(const HostId& id) {
   if (!model_->IsHostExists(id)) {
     server_->RequestHostSync(
-        id, std::bind(&CommunicationHost::OnHostSynced, this, _1));
+        id, std::bind(&CommunicationManager::OnHostSynced, this, _1));
   }
 }
 
-void CommunicationHost::HostDisconnected(const HostId& id) {
+void CommunicationManager::HostDisconnected(const HostId& id) {
   (void)id;
   // Right now it is not used, but may be used to display state of the host.
 }
 
-void CommunicationHost::HostTextAdded(const HostId& id,
-                                      const std::string& text) {
+void CommunicationManager::HostTextAdded(const HostId& id,
+                                         const std::string& text) {
   if (!model_->AddHostText(id, text)) {
     server_->RequestHostSync(
-        id, std::bind(&CommunicationHost::OnHostSynced, this, _1));
+        id, std::bind(&CommunicationManager::OnHostSynced, this, _1));
   }
 }
 
-void CommunicationHost::HostSynced(HostData data) {
+void CommunicationManager::HostSynced(HostData data) {
   model_->SetHostData(std::move(data));
 }
 
-void CommunicationHost::OnThisTextPushed() {
+void CommunicationManager::OnThisTextPushed() {
   const auto& text_data = model_->GetThisHostData().data.text;
   assert(!text_data.empty());
   server_->AddThisHostText(text_data.front());
 }
 
-void CommunicationHost::OnHostSynced(std::optional<HostData> data) {
+void CommunicationManager::OnHostSynced(std::optional<HostData> data) {
   if (data) {
     HostSynced(std::move(data.value()));
   } else {

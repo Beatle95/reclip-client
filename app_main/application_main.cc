@@ -5,7 +5,7 @@
 
 #include "base/log.h"
 #include "base/preferences.h"
-#include "communication/communication_host.h"
+#include "communication/communication_manager.h"
 #include "core/clipboard.h"
 #include "core/clipboard_model.h"
 #include "ui/clipboard_controller.h"
@@ -24,7 +24,7 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
   clipboard_->Start();
   model_observation_.Reset(*model_, *clipboard_);
 
-  communication_host_ = std::make_unique<CommunicationHost>(*model_);
+  communication_host_ = std::make_unique<CommunicationManager>(*model_);
   controller_ =
       std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
   controller_observation_.Reset(*controller_, *model_);

@@ -7,10 +7,11 @@
 
 namespace reclip {
 
-class CommunicationHost : public ServerDelegate, public ClipboardModelObserver {
+class CommunicationManager : public ServerDelegate,
+                             public ClipboardModelObserver {
  public:
-  explicit CommunicationHost(ClipboardModel& model);
-  ~CommunicationHost() override = default;
+  explicit CommunicationManager(ClipboardModel& model);
+  ~CommunicationManager() override = default;
 
   // ServerDelegate overrides:
   void OnFullSync(HostData, std::vector<HostData>) override;
@@ -33,7 +34,7 @@ class CommunicationHost : public ServerDelegate, public ClipboardModelObserver {
 
   ClipboardModel* model_;
   std::unique_ptr<Server> server_;
-  ScopedObservation<CommunicationHost, ClipboardModel> model_observation_;
+  ScopedObservation<CommunicationManager, ClipboardModel> model_observation_;
 };
 
 }  // namespace reclip

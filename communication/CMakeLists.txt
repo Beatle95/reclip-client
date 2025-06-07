@@ -9,8 +9,8 @@ target_sources(
     message_types.h
     serialization.h
     serialization.cc
-    communication_host.h
-    communication_host.cc
+    communication_manager.h
+    communication_manager.cc
     message_reassembler.h
     message_reassembler.cc
 )
