@@ -5,8 +5,8 @@
 #include <QTimer>
 #include <cassert>
 
+#include "base/buildflags.h"
 #include "base/log.h"
-#include "base/platform.h"
 #include "communication/connection.h"
 #include "communication/connection_impl.h"
 #include "core/test_with_event_loop_base.h"
@@ -73,7 +73,7 @@ QString GetServerPartTestPath() {
   const auto dir_path = QCoreApplication::instance()->applicationDirPath();
   auto result_path =
       dir_path + "/../../../server/out/communication_protocol_test";
-#if IS_WIN
+#if BUILDFLAG(IS_WIN)
   result_path += ".exe";
 #endif
   if (!QFileInfo::exists(result_path)) {
