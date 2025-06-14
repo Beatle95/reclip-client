@@ -9,8 +9,12 @@ target_sources(
     observer.h
     observer.cc
     scoped_observation.h
-    preferences.h
-    preferences.cc
+)
+target_sources(
+  reclip_core
+  PUBLIC
+    FILE_SET base_modules TYPE CXX_MODULES FILES
+    preferences.ccm
 )
 
 target_sources(

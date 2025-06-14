@@ -3,7 +3,8 @@
 
 #include "base/observers_list.h"
 #include "core/clipboard_observer.h"
-#include "core/host_types.h"
+
+import core;
 
 namespace reclip {
 

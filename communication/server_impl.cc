@@ -1,15 +1,17 @@
 #include "communication/server_impl.h"
+#include "moc_server_impl.cpp"
 
 #include <cassert>
 #include <chrono>
 #include <cstdint>
 
 #include "base/log.h"
-#include "base/preferences.h"
 #include "communication/connection.h"
 #include "communication/connection_impl.h"
 #include "communication/message_types.h"
 #include "communication/serialization.h"
+
+import base;
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;

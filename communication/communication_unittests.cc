@@ -157,7 +157,8 @@ class ServerTestBase : public TestWithEventLoopBase,
 namespace {
 SerializationTestHelperImpl CreateCommonSerializationHelper() {
   SerializationTestHelperImpl result;
-  result.SetIntroductionResult(IntroductionResponse{.success = true});
+  result.SetIntroductionResult(
+      IntroductionResponse{.server_version = {}, .error = {}, .success = true});
   result.SetSyncResult(SyncResponse{});
   result.SetHostIdResult(HostId{});
   result.SetHostDataResult(HostData{});

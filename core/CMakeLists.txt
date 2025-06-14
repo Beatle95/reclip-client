@@ -4,8 +4,12 @@ target_sources(
     clipboard_model.cc
     clipboard.h
     clipboard.cc
-    host_types.h
-    host_types.cc
+)
+target_sources(
+  reclip_core
+  PUBLIC
+    FILE_SET core_modules TYPE CXX_MODULES FILES
+    host_types.ccm
 )
 
 if(APPLE)

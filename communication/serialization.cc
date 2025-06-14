@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QVersionNumber>
 #include <cassert>
+#include <deque>
 
 constexpr char kHostIdKey[] = "ClientId";
 constexpr char kHostNameKey[] = "ClientName";
@@ -85,7 +86,7 @@ IntroductionResponse ParseIntroductionResponse(const QByteArray& data) {
     return g_test_helper->ParseIntroductionResponse(data);
   }
 
-  IntroductionResponse result{.success = false};
+  IntroductionResponse result{};
   auto doc = QJsonDocument::fromJson(data);
   if (doc.isEmpty()) {
     result.error = kWrongServerResponseFormat;

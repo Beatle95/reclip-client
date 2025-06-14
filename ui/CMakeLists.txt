@@ -12,6 +12,7 @@ target_sources(
 
 target_link_libraries(
     reclip_ui PUBLIC
+    reclip_core
     Qt6::Core
     Qt6::Widgets
 )

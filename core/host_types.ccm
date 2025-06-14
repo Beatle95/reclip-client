@@ -1,6 +1,27 @@
-#include "core/host_types.h"
+module;
 
-namespace reclip {
+#include <deque>
+#include <string>
+
+export module core;
+
+export namespace reclip {
+
+// TODO: Make ID uint64_t.
+using HostId = std::string;
+using HostSecret = std::string;
+using ClipboardTextContainer = std::deque<std::string>;
+
+// We will create this struct, so later we will populate it with files data.
+struct ClipboardData {
+  ClipboardTextContainer text;
+};
+
+struct HostData {
+  HostId id;
+  std::string name;
+  ClipboardData data;
+};
 
 bool operator==(const ClipboardData& lhs, const ClipboardData& rhs) {
   return lhs.text == rhs.text;

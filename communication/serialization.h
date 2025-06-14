@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "core/host_types.h"
+import core;
 
 namespace reclip {
 
