@@ -2,12 +2,12 @@
 #include <cstdint>
 
 #include "core/clipboard.h"
-#include "core/clipboard_model.h"
 #include "ui/content_window.h"
 
-namespace reclip {
+import core.clipboard_model;
+import core.host_types;
 
-class ClipboardModel;
+namespace reclip {
 
 class ClipboardController : public ClipboardModelObserver,
                             public ContentWindow::Delegate {

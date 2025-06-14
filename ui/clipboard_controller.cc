@@ -4,6 +4,9 @@
 #include "ui/content_window.h"
 #include "ui/host_clipboard_view.h"
 
+import core.clipboard_model;
+import core.host_types;
+
 namespace reclip {
 namespace {
 constexpr uint32_t kThisHostIndex = 0;

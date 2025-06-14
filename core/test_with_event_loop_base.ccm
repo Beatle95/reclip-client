@@ -1,9 +1,30 @@
-#include "core/test_with_event_loop_base.h"
+module;
 
+#include <QCoreApplication>
 #include <QEventLoop>
 #include <cassert>
 
+#include "gtest/gtest.h"
+
+class QCoreApplication;
+
+export module core.test_with_event_loop_base;
+
 namespace reclip {
+
+export class TestWithEventLoopBase : public ::testing::Test {
+ public:
+  ~TestWithEventLoopBase() override;
+  void SetUp() override;
+  void TearDown() override;
+
+  void RunEventLoopUntilIdle();
+  void RunEventLoop();
+  void ExitEventLoop(int status = 0);
+
+ private:
+  std::unique_ptr<QCoreApplication> app_;
+};
 
 TestWithEventLoopBase::~TestWithEventLoopBase() = default;
 

@@ -3,9 +3,11 @@
 
 #include <QApplication>
 
-#include "core/clipboard_model.h"
 #include "ui/clipboard_controller.h"
 #include "ui/host_clipboard_view.h"
+
+import core.clipboard_model;
+import core.host_types;
 
 using namespace reclip;
 

@@ -2,8 +2,6 @@
 #include <QClipboard>
 #include <QObject>
 #include <QTimer>
-#include <memory>
-#include <vector>
 
 #include "core/clipboard.h"
 

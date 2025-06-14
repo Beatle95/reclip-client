@@ -5,10 +5,10 @@
 #include <format>
 #include <memory>
 
-#include "core/clipboard_model.h"
-
 import base.constants;
 import base.observer_helper;
+import core.clipboard_model;
+import core.host_types;
 
 using namespace reclip;
 using ::testing::_;

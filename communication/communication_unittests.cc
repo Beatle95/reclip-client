@@ -6,10 +6,11 @@
 
 #include "communication/server.h"
 #include "communication/server_impl.h"
-#include "core/test_with_event_loop_base.h"
 
 import communication.message_types;
 import communication.serialization;
+import core.host_types;
+import core.test_with_event_loop_base;
 
 using namespace reclip;
 using namespace ::testing;

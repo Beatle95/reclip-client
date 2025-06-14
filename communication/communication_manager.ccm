@@ -6,11 +6,12 @@ module;
 #include "base/log.h"
 #include "communication/server.h"
 #include "communication/server_impl.h"
-#include "core/clipboard_model.h"
 
 export module communication.communication_manager;
 
 import base.observer_helper;
+import core.clipboard_model;
+import core.host_types;
 
 namespace reclip {
 

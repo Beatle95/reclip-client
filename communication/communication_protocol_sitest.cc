@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <QCoreApplication>
 #include <QFileInfo>
 #include <QProcess>
 #include <QTimer>
@@ -9,7 +10,9 @@
 #include "base/log.h"
 #include "communication/connection.h"
 #include "communication/connection_impl.h"
-#include "core/test_with_event_loop_base.h"
+
+import core.test_with_event_loop_base;
+import communication.message_types;
 
 using namespace reclip;
 using namespace std::chrono_literals;
