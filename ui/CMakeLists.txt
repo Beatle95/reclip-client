@@ -4,10 +4,14 @@ target_sources(
     content_window.cc
     text_view.h
     text_view.cc
-    clipboard_controller.h
-    clipboard_controller.cc
     host_clipboard_view.h
     host_clipboard_view.cc
+)
+target_sources(
+  reclip_ui
+  PUBLIC
+    FILE_SET ui_modules TYPE CXX_MODULES FILES
+    clipboard_controller.ccm
 )
 
 target_link_libraries(

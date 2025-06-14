@@ -6,11 +6,11 @@
 
 #include "base/log.h"
 #include "core/clipboard.h"
-#include "ui/clipboard_controller.h"
 
 import base.preferences;
 import core.clipboard_model;
 import communication.communication_manager;
+import ui.clipboard_controller;
 
 const auto kShowUiOnStartupArg = QStringLiteral("--show_ui_on_startup");
 

@@ -11,6 +11,7 @@ class TextView;
 class HostClipboardView;
 
 class ContentWindow : public QMainWindow {
+  Q_OBJECT
  public:
   class Delegate {
    public:
