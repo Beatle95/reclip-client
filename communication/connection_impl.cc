@@ -1,4 +1,5 @@
 #include "communication/connection_impl.h"
+#include "moc_connection_impl.cpp"
 
 #include <cassert>
 #include <cstdint>

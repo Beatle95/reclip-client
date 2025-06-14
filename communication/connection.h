@@ -1,7 +1,7 @@
 #pragma once
 #include <QByteArray>
 
-#include "communication/message_types.h"
+import communication.message_types;
 
 namespace reclip {
 

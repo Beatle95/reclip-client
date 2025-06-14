@@ -4,8 +4,9 @@
 #include <QTcpSocket>
 
 #include "communication/connection.h"
-#include "communication/message_reassembler.h"
-#include "communication/message_types.h"
+
+import communication.message_types;
+import communication.message_reassembler;
 
 namespace reclip {
 

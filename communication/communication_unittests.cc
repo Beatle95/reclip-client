@@ -4,11 +4,12 @@
 #include <QTimer>
 #include <cassert>
 
-#include "communication/message_types.h"
-#include "communication/serialization.h"
 #include "communication/server.h"
 #include "communication/server_impl.h"
 #include "core/test_with_event_loop_base.h"
+
+import communication.message_types;
+import communication.serialization;
 
 using namespace reclip;
 using namespace ::testing;

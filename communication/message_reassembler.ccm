@@ -1,12 +1,37 @@
-#include "communication/message_reassembler.h"
+module;
+
+#include <QByteArray>
+#include <cassert>
+#include <optional>
+#include <queue>
 
 #include "base/log.h"
 
+export module communication.message_reassembler;
+
 import byte_swap;
 
+namespace {
 constexpr uint64_t kMaxMessageSize = 1 * 1024 * 1024 * 1024;
+}
 
 namespace reclip {
+
+export class MessageReassembler {
+ public:
+  void Clear();
+  void Process(const QByteArray& new_data);
+  bool HasMessage() const;
+  QByteArray PopMessage();
+
+ private:
+  size_t ProcessLen(const QByteArray& data);
+  size_t ProcessMsg(const QByteArray& data);
+
+  std::queue<QByteArray> messages_;
+  QByteArray data_leftover_;
+  std::optional<uint64_t> size_;
+};
 
 void MessageReassembler::Clear() {
   messages_ = decltype(messages_){};

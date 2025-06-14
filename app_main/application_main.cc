@@ -5,12 +5,12 @@
 #include <cassert>
 
 #include "base/log.h"
-#include "communication/communication_manager.h"
 #include "core/clipboard.h"
 #include "core/clipboard_model.h"
 #include "ui/clipboard_controller.h"
 
 import base.preferences;
+import communication.communication_manager;
 
 const auto kShowUiOnStartupArg = QStringLiteral("--show_ui_on_startup");
 

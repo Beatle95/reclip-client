@@ -1,8 +1,9 @@
-#include "communication/message_reassembler.h"
-
 #include <gtest/gtest.h>
 
+#include <QByteArray>
 #include <limits>
+
+import communication.message_reassembler;
 
 import byte_swap;
 

@@ -6,13 +6,15 @@ target_sources(
     server.h
     server_impl.h
     server_impl.cc
-    message_types.h
-    serialization.h
-    serialization.cc
-    communication_manager.h
-    communication_manager.cc
-    message_reassembler.h
-    message_reassembler.cc
+)
+target_sources(
+  reclip_communication
+  PUBLIC
+    FILE_SET base_modules TYPE CXX_MODULES FILES
+    message_types.ccm
+    communication_manager.ccm
+    message_reassembler.ccm
+    serialization.ccm
 )
 
 target_link_libraries(

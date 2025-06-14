@@ -8,10 +8,10 @@
 #include "base/log.h"
 #include "communication/connection.h"
 #include "communication/connection_impl.h"
-#include "communication/message_types.h"
-#include "communication/serialization.h"
 
 import base.preferences;
+import communication.message_types;
+import communication.serialization;
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;

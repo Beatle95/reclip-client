@@ -1,7 +1,10 @@
-#pragma once
+module;
+
 #include <cstdint>
 
-namespace reclip {
+export module communication.message_types;
+
+export namespace reclip {
 
 // WARNING: This enums values must be synchronized with server implementation.
 enum class ClientMessageType : uint16_t {
