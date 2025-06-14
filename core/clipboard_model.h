@@ -1,10 +1,10 @@
 #pragma once
 #include <vector>
 
-#include "base/observers_list.h"
 #include "core/clipboard_observer.h"
 
-import core;
+import core.host_types;
+import base.observer_helper;
 
 namespace reclip {
 

@@ -1,12 +1,17 @@
-#pragma once
+module;
+
+#include <cassert>
 #include <cstdint>
-#include <vector>
+
+namespace reclip {
+class TestObserver;
+}
+
+export module base.observer_helper:observer;
 
 namespace reclip {
 
-class ObserversListBase;
-
-class Observer {
+export class Observer {
  public:
   Observer() = default;
   virtual ~Observer() = default;
@@ -20,7 +25,7 @@ class Observer {
   virtual void OnUnsibscribe() = 0;
 };
 
-class CheckedObserver : public Observer {
+export class CheckedObserver : public Observer {
  public:
   ~CheckedObserver() override;
 
@@ -34,5 +39,17 @@ class CheckedObserver : public Observer {
 
   uint32_t subscriptions_count_ = 0;
 };
+
+CheckedObserver::~CheckedObserver() {
+  assert(subscriptions_count_ == 0 &&
+         "Destructor of the subsceibed observer was called");
+}
+
+void CheckedObserver::OnSubscribe() { ++subscriptions_count_; }
+
+void CheckedObserver::OnUnsibscribe() {
+  assert(subscriptions_count_ != 0);
+  --subscriptions_count_;
+}
 
 }  // namespace reclip

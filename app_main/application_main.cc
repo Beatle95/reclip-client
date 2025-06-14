@@ -1,4 +1,5 @@
 #include "app_main/application_main.h"
+#include "moc_application_main.cpp"
 
 #include <QTimer>
 #include <cassert>
@@ -9,7 +10,7 @@
 #include "core/clipboard_model.h"
 #include "ui/clipboard_controller.h"
 
-import base;
+import base.preferences;
 
 const auto kShowUiOnStartupArg = QStringLiteral("--show_ui_on_startup");
 

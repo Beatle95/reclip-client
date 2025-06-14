@@ -4,7 +4,7 @@
 
 #include <limits>
 
-#include "base/byte_swap.h"
+import byte_swap;
 
 using namespace reclip;
 

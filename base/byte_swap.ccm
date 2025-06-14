@@ -1,6 +1,10 @@
+module;
+
 #include <bit>
 
-namespace reclip {
+export module byte_swap;
+
+export namespace reclip {
 
 template <typename T>
 T ntoh(T value) {

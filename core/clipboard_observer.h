@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
-#include "base/observer.h"
+
+import base.observer_helper;
 
 namespace reclip {
 

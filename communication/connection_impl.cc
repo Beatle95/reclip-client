@@ -4,9 +4,10 @@
 #include <cstdint>
 #include <span>
 
-#include "base/byte_swap.h"
 #include "base/log.h"
 #include "communication/connection.h"
+
+import byte_swap;
 
 namespace reclip {
 namespace {

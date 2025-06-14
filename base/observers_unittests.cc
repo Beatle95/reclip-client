@@ -3,8 +3,7 @@
 #include <memory>
 #include <span>
 
-#include "base/observer.h"
-#include "base/observers_list.h"
+import base.observer_helper;
 
 using namespace reclip;
 using namespace ::testing;

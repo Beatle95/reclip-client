@@ -2,7 +2,7 @@
 #include <QApplication>
 #include <memory>
 
-#include "base/scoped_observation.h"
+import base.observer_helper;
 
 namespace reclip {
 

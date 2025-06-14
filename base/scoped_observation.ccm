@@ -1,9 +1,12 @@
-#pragma once
+module;
+
 #include <cassert>
+
+export module base.observer_helper:scoped_observation;
 
 namespace reclip {
 // TODO: add traits
-template <typename Subscriber, typename Target>
+export template <typename Subscriber, typename Target>
 class ScopedObservation {
  public:
   ScopedObservation() = default;

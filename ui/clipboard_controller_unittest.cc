@@ -3,7 +3,6 @@
 
 #include <QApplication>
 
-#include "base/constants.h"
 #include "core/clipboard_model.h"
 #include "ui/clipboard_controller.h"
 #include "ui/host_clipboard_view.h"

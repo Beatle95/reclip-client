@@ -1,16 +1,17 @@
-#pragma once
+module;
+
 #include <algorithm>
 #include <cassert>
 #include <list>
 
-#include "base/observer.h"
+export module base.observer_helper:observers_list;
 
 namespace reclip {
 
 // This class is needed to check emptines of subscribed observers upon
 // destruction and to ensure that adding and removing elements is safe upon
 // iteration.
-template <typename T>
+export template <typename T>
 class ObserversList {
  public:
   using ContainerType = std::list<T*>;
@@ -191,7 +192,7 @@ class ObserversList {
 };
 
 // This is simple class to eliminate some boilerplates.
-template <typename T>
+export template <typename T>
 class SimpleObservable {
  public:
   void AddObserver(T* target) { observers_.AddObserver(target); }

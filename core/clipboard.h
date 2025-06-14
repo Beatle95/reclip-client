@@ -1,8 +1,9 @@
 #pragma once
 #include <memory>
 
-#include "base/observers_list.h"
 #include "core/clipboard_observer.h"
+
+import base.observer_helper;
 
 namespace reclip {
 

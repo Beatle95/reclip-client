@@ -5,9 +5,10 @@
 #include <format>
 #include <memory>
 
-#include "base/constants.h"
-#include "base/scoped_observation.h"
 #include "core/clipboard_model.h"
+
+import base.constants;
+import base.observer_helper;
 
 using namespace reclip;
 using ::testing::_;

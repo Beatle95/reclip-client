@@ -1,20 +1,20 @@
 target_sources(
     reclip_core PRIVATE
-    constants.h
     buildflags.h
-    byte_swap.h
     log.h
     log.cc
-    observers_list.h
-    observer.h
-    observer.cc
-    scoped_observation.h
 )
 target_sources(
   reclip_core
   PUBLIC
     FILE_SET base_modules TYPE CXX_MODULES FILES
+    constants.ccm
+    byte_swap.ccm
     preferences.ccm
+    observer_helper.ccm
+    observer.ccm
+    observers_list.ccm
+    scoped_observation.ccm
 )
 
 target_sources(

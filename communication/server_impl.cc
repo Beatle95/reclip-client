@@ -11,7 +11,7 @@
 #include "communication/message_types.h"
 #include "communication/serialization.h"
 
-import base;
+import base.preferences;
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;

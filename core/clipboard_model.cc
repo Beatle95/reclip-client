@@ -3,8 +3,9 @@
 #include <algorithm>
 #include <cassert>
 
-#include "base/constants.h"
 #include "base/log.h"
+
+import base.constants;
 
 namespace reclip {
 

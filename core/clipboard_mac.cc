@@ -1,11 +1,13 @@
 #include "core/clipboard_mac.h"
+#include "moc_clipboard_mac.cpp"
 
 #include <QGuiApplication>
 #include <cassert>
 
-#include "base/constants.h"
 #include "base/log.h"
 #include "core/clipboard_observer.h"
+
+import base.constants;
 
 namespace reclip {
 

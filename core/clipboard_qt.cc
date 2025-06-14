@@ -3,9 +3,10 @@
 #include <QGuiApplication>
 #include <cassert>
 
-#include "base/constants.h"
 #include "base/log.h"
 #include "core/clipboard_observer.h"
+
+import base.constants;
 
 namespace reclip {
 void ClipboardMac::WriteText(const std::string&) {

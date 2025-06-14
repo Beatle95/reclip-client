@@ -11,7 +11,7 @@
 #include "communication/connection.h"
 #include "communication/server.h"
 
-import core;
+import core.host_types;
 
 namespace reclip {
 

@@ -4,9 +4,9 @@ module;
 #include <string>
 #include <string_view>
 
-export module base;
+export module base.preferences;
 
-import core;
+import core.host_types;
 
 namespace reclip {
 

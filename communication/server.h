@@ -3,7 +3,7 @@
 #include <string>
 #include <optional>
 
-import core;
+import core.host_types;
 
 namespace reclip {
 

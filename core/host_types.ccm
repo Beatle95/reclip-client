@@ -3,7 +3,7 @@ module;
 #include <deque>
 #include <string>
 
-export module core;
+export module core.host_types;
 
 export namespace reclip {
 

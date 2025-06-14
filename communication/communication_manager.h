@@ -1,9 +1,10 @@
 #pragma once
 #include <memory>
 
-#include "base/scoped_observation.h"
 #include "communication/server.h"
 #include "core/clipboard_model.h"
+
+import base.observer_helper;
 
 namespace reclip {
 

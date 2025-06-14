@@ -1,7 +1,8 @@
 #include "communication/message_reassembler.h"
 
-#include "base/byte_swap.h"
 #include "base/log.h"
+
+import byte_swap;
 
 constexpr uint64_t kMaxMessageSize = 1 * 1024 * 1024 * 1024;
 
