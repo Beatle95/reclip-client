@@ -1,16 +1,21 @@
-#pragma once
+module;
+
 #include <functional>
 #include <string>
 #include <optional>
 
+export module communication.server;
+
 import core.host_types;
+import communication.connection_info_provider;
 
 namespace reclip {
 
 // This interface describes Server->Client calls.
-class ServerDelegate {
+export class ServerDelegate {
  public:
   virtual ~ServerDelegate() = default;
+  virtual ConnectionInfoProvider& GetConnectionInfoProvider() = 0;
   virtual void OnFullSync(HostData, std::vector<HostData>) = 0;
   virtual void HostConnected(const HostId& id) = 0;
   virtual void HostDisconnected(const HostId& id) = 0;
@@ -19,7 +24,7 @@ class ServerDelegate {
 };
 
 // This interface describes Client->Server calls.
-class Server {
+export class Server {
  public:
   using HostSyncCallback = std::function<void(std::optional<HostData>)>;
 
