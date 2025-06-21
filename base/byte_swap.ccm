@@ -2,7 +2,7 @@ module;
 
 #include <bit>
 
-export module byte_swap;
+export module base.byte_swap;
 
 export namespace reclip {
 

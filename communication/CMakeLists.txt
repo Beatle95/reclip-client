@@ -1,13 +1,4 @@
 target_sources(
-    reclip_communication PRIVATE
-    connection.h
-    connection_impl.h
-    connection_impl.cc
-    server.h
-    server_impl.h
-    server_impl.cc
-)
-target_sources(
   reclip_communication
   PUBLIC
     FILE_SET base_modules TYPE CXX_MODULES FILES
@@ -15,6 +6,11 @@ target_sources(
     communication_manager.ccm
     message_reassembler.ccm
     serialization.ccm
+    connection_info_provider.ccm
+    server.ccm
+    server_impl.ccm
+    server_connection.ccm
+    server_connection_impl.ccm
 )
 
 target_link_libraries(

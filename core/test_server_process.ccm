@@ -1,0 +1,81 @@
+module;
+
+#include <QCoreApplication>
+#include <QFileInfo>
+#include <QObject>
+#include <QProcess>
+#include <QString>
+#include <format>
+#include <stdexcept>
+
+#include "base/buildflags.h"
+#include "base/log.h"
+
+export module core.test_server_process;
+
+namespace {
+
+const QString kTestBinaryName = "client_integration_tests";
+
+QString GetServerPartTestPath(const QString& binary_name) {
+  const auto dir_path = QCoreApplication::instance()->applicationDirPath();
+  auto result_path =
+      dir_path + "/../../../server/out/" + binary_name;
+#if BUILDFLAG(IS_WIN)
+  result_path += ".exe";
+#endif
+  if (!QFileInfo::exists(result_path)) {
+    return {};
+  }
+  return result_path;
+}
+
+}  // namespace
+
+export class ServerProcess {
+ public:
+  ServerProcess() : path_(GetServerPartTestPath(kTestBinaryName)) {
+    if (path_.isEmpty()) {
+      throw std::runtime_error(std::format(
+          "Test was unable to find server part test binary. It expected to be "
+          "located at this path (expecting that current directory is "
+          "application dir path) "
+          "./../../../server/out/{}",
+          kTestBinaryName.toStdString()));
+    }
+    QObject::connect(&proc_, &QProcess::readyReadStandardOutput,
+                     [this]() { OutReady(); });
+    QObject::connect(&proc_, &QProcess::readyReadStandardError,
+                     [this]() { ErrorReady(); });
+  }
+
+  bool Start(const QString& test_name, uint16_t port) {
+    assert(proc_.state() == QProcess::NotRunning);
+    proc_.start(path_, {test_name, QString::number(port)});
+    return proc_.waitForStarted(5000);
+  }
+
+  void Stop() { proc_.write("stop\n"); }
+
+  bool WaitFinished(int ms = 5000) { return proc_.waitForFinished(ms); }
+
+ private:
+  void OutReady() {
+    const auto strings =
+        QString(proc_.readAllStandardOutput()).split('\n', Qt::SkipEmptyParts);
+    for (const auto& str : strings) {
+      LOG(INFO) << "[server]: " << str.toStdString();
+    }
+  }
+
+  void ErrorReady() {
+    const auto strings =
+        QString(proc_.readAllStandardError()).split('\n', Qt::SkipEmptyParts);
+    for (const auto& str : strings) {
+      LOG(INFO) << "[server]: " << str.toStdString();
+    }
+  }
+
+  QProcess proc_;
+  QString path_;
+};

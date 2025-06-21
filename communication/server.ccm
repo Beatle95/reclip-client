@@ -1,8 +1,9 @@
 module;
 
+#include <chrono>
 #include <functional>
-#include <string>
 #include <optional>
+#include <string>
 
 export module communication.server;
 
@@ -29,6 +30,8 @@ export class Server {
   using HostSyncCallback = std::function<void(std::optional<HostData>)>;
 
   virtual ~Server() = default;
+  virtual void Disconnect(std::function<void(bool)> callback,
+                          std::chrono::milliseconds timeout) = 0;
   virtual void RequestHostSync(const HostId& id, HostSyncCallback callback) = 0;
   virtual void SyncThisHost(const HostData& data) = 0;
   virtual void AddThisHostText(const std::string& text) = 0;

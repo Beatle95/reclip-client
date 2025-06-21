@@ -1,11 +1,11 @@
 #pragma once
 #include <sstream>
 
-#define LOG(severity) Log(reclip::Severity::_##severity)
+#define LOG(severity) reclip::Log(reclip::Severity::_##severity)
 #ifdef NDEBUG
 #define DLOG(severity) NoOpLog()
 #else
-#define DLOG(severity) Log(reclip::Severity::_##severity)
+#define DLOG(severity) reclip::Log(reclip::Severity::_##severity)
 #endif
 
 class QString;

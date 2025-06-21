@@ -3,12 +3,13 @@
 
 #include <QTimer>
 #include <cassert>
-
-#include "communication/server.h"
-#include "communication/server_impl.h"
+#include <memory>
 
 import communication.message_types;
 import communication.serialization;
+import communication.connection_info_provider;
+import communication.server_impl;
+import communication.server_connection;
 import core.host_types;
 import core.test_with_event_loop_base;
 
@@ -62,14 +63,23 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
 
 class MockServerDelegate : public ServerDelegate {
  public:
+  MOCK_METHOD0(GetConnectionInfoProvider, ConnectionInfoProvider&());
   MOCK_METHOD2(OnFullSync, void(HostData, std::vector<HostData>));
   MOCK_METHOD1(HostConnected, void(const HostId& id));
   MOCK_METHOD1(HostDisconnected, void(const HostId& id));
   MOCK_METHOD2(HostTextAdded, void(const HostId& id, const std::string& text));
   MOCK_METHOD1(HostSynced, void(HostData data));
+
+  MockServerDelegate() {
+    ON_CALL(*this, GetConnectionInfoProvider).WillByDefault(ReturnRef(*provider_));
+  }
+
+ private:
+  std::unique_ptr<ConnectionInfoProvider> provider_ =
+      ConnectionInfoProvider::Create();
 };
 
-class MockConnection : public Connection {
+class MockConnection : public ServerConnection {
  public:
   MOCK_METHOD0(Connect, void());
   MOCK_METHOD0(Disconnect, void());
@@ -112,10 +122,10 @@ class MockConnection : public Connection {
         });
   }
 
-  void SetDelegate(Connection::Delegate* delegate) { delegate_ = delegate; }
+  void SetDelegate(ServerConnection::Delegate* delegate) { delegate_ = delegate; }
 
  private:
-  Connection::Delegate* delegate_ = nullptr;
+  ServerConnection::Delegate* delegate_ = nullptr;
 };
 
 class ServerTestBase : public TestWithEventLoopBase,
@@ -140,7 +150,7 @@ class ServerTestBase : public TestWithEventLoopBase,
   }
 
   // ServerImpl::TestHelper overrides.
-  std::unique_ptr<Connection> CreateConnection() override {
+  std::unique_ptr<ServerConnection> CreateConnection() override {
     auto ptr = std::make_unique<MockConnection>();
     connection_ = ptr.get();
     return std::move(ptr);
@@ -176,6 +186,7 @@ TEST_F(ServerTestBase, AutoReconnection) {
   EXPECT_CALL(*connection(), Connect).Times(1);
   EXPECT_CALL(*connection(), SendMessage).Times(2);
   EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
 
   WaitServerConnected();
   Mock::VerifyAndClearExpectations(connection());
@@ -185,6 +196,8 @@ TEST_F(ServerTestBase, AutoReconnection) {
     EXPECT_CALL(*connection(), Connect).Times(1);
     EXPECT_CALL(*connection(), SendMessage).Times(2);
     EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
+    EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider)
+        .Times(AnyNumber());
 
     server()->HandleDisconnected();
     EXPECT_EQ(server()->GetStateForTesting(),
@@ -202,6 +215,7 @@ TEST_F(ServerTestBase, ServerClientCommunication) {
   EXPECT_CALL(*connection(), Connect).Times(1);
   EXPECT_CALL(*connection(), SendMessage).Times(2);
   EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
   ASSERT_NE(connection(), nullptr);
   WaitServerConnected();
 
@@ -211,18 +225,22 @@ TEST_F(ServerTestBase, ServerClientCommunication) {
 
   serializer_helper.SetHostIdResult(kKnownId);
   EXPECT_CALL(*server_delegate(), HostConnected(kKnownId)).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
   server()->HandleReceieved(kIrrelevantMsgId, ServerMessageType::kHostConnected,
                             {});
   Mock::VerifyAndClearExpectations(server_delegate());
 
   EXPECT_CALL(*server_delegate(), HostDisconnected(kKnownId)).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
   server()->HandleReceieved(kIrrelevantMsgId,
                             ServerMessageType::kHostDisconnected, {});
   Mock::VerifyAndClearExpectations(server_delegate());
 
   serializer_helper.SetNewTextResult(
       TextUpdateResponse{.id = kKnownId, .text = kIrrelevantText});
-  EXPECT_CALL(*server_delegate(), HostTextAdded(kKnownId, kIrrelevantText)).Times(1);
+  EXPECT_CALL(*server_delegate(), HostTextAdded(kKnownId, kIrrelevantText))
+      .Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
   server()->HandleReceieved(kIrrelevantMsgId, ServerMessageType::kTextUpdate,
                             {});
   Mock::VerifyAndClearExpectations(server_delegate());
@@ -233,6 +251,7 @@ TEST_F(ServerTestBase, ServerClientCommunication) {
       .data = {.text = ClipboardTextContainer{kIrrelevantText}}};
   serializer_helper.SetHostDataResult(synced_host);
   EXPECT_CALL(*server_delegate(), HostSynced(synced_host)).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
   server()->HandleReceieved(kIrrelevantMsgId, ServerMessageType::kHostSynced,
                             {});
   Mock::VerifyAndClearExpectations(server_delegate());

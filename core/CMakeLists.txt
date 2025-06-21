@@ -35,14 +35,27 @@ target_sources(
   PUBLIC
     FILE_SET core_modules TYPE CXX_MODULES FILES
     test_with_event_loop_base.ccm
+    test_server_process.ccm
 )
 target_sources(
     server_integration_tests PRIVATE
     test_with_event_loop_base.ccm
+    test_server_process.ccm
 )
 target_sources(
   server_integration_tests
   PUBLIC
     FILE_SET core_modules TYPE CXX_MODULES FILES
     test_with_event_loop_base.ccm
+    test_server_process.ccm
+)
+
+target_sources(
+    server_integration_tests PRIVATE
+    full_client_sitest.cc
+)
+target_link_libraries(
+    server_integration_tests PUBLIC
+    reclip_core
+    reclip_communication
 )

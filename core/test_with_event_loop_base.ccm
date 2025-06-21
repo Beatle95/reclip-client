@@ -3,10 +3,9 @@ module;
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <cassert>
+#include <chrono>
 
 #include "gtest/gtest.h"
-
-class QCoreApplication;
 
 export module core.test_with_event_loop_base;
 
@@ -19,8 +18,9 @@ export class TestWithEventLoopBase : public ::testing::Test {
   void TearDown() override;
 
   void RunEventLoopUntilIdle();
-  void RunEventLoop();
-  void ExitEventLoop(int status = 0);
+  void NonBlockingDelay(std::chrono::milliseconds duration);
+  void ExecMainEventLoop();
+  void ExitMainEventLoop(int status = 0);
 
  private:
   std::unique_ptr<QCoreApplication> app_;
@@ -36,17 +36,17 @@ void TestWithEventLoopBase::SetUp() {
 
 void TestWithEventLoopBase::TearDown() { app_.reset(); }
 
-void TestWithEventLoopBase::RunEventLoopUntilIdle() {
-  QCoreApplication::processEvents();
+void TestWithEventLoopBase::RunEventLoopUntilIdle() { QCoreApplication::processEvents(); }
+
+void TestWithEventLoopBase::NonBlockingDelay(std::chrono::milliseconds duration) {
+  app_->processEvents(QEventLoop::AllEvents, static_cast<int>(duration.count()));
 }
 
-void TestWithEventLoopBase::RunEventLoop() {
+void TestWithEventLoopBase::ExecMainEventLoop() {
   assert(app_);
   app_->exec();
 }
 
-void TestWithEventLoopBase::ExitEventLoop(int status) {
-  app_->exit(status);
-}
+void TestWithEventLoopBase::ExitMainEventLoop(int status) { app_->exit(status); }
 
 }  // namespace reclip

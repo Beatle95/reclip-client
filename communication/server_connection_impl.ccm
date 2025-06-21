@@ -1,16 +1,55 @@
-#include "communication/connection_impl.h"
-#include "moc_connection_impl.cpp"
+module;
 
+#include <QByteArray>
+#include <QObject>
+#include <QTcpSocket>
 #include <cassert>
 #include <cstdint>
 #include <span>
 
 #include "base/log.h"
-#include "communication/connection.h"
 
-import byte_swap;
+export module communication.connection_impl;
+
+export import communication.server_connection;
+
+import base.byte_swap;
+import communication.message_types;
+import communication.message_reassembler;
 
 namespace reclip {
+
+// This class abstracts away connection and communication with server.
+export class ServerConnectionImpl : public QObject, public ServerConnection {
+ public:
+  explicit ServerConnectionImpl(ServerConnection::Delegate& delegate, const QString& ip,
+                                quint16 port);
+  ~ServerConnectionImpl() override;
+
+  // ServerConnection overrides
+  void Connect() override;
+  void Disconnect() override;
+  bool SendMessage(uint64_t id, ClientMessageType type, const QByteArray& data) override;
+
+ private:
+  void OnConnected();
+  void OnDisconnected();
+  void OnReadyRead();
+  void OnError(QAbstractSocket::SocketError err);
+
+ private:
+  QString ip_;
+  quint16 port_;
+
+  MessageReassembler reassembler_;
+  QTcpSocket socket_;
+  ServerConnection::Delegate* delegate_;
+
+  // This field will help us to distinguish between errors upon connection and
+  // errors upon communication process.
+  bool connected_ = false;
+};
+
 namespace {
 
 struct NetworkHeader {
@@ -47,18 +86,16 @@ bool ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
 
 }  // namespace
 
-ServerConnectionImpl::ServerConnectionImpl(Connection::Delegate& delegate,
-                                           const QString& ip, quint16 port)
+ServerConnectionImpl::ServerConnectionImpl(ServerConnection::Delegate& delegate, const QString& ip,
+                                           quint16 port)
     : ip_(ip), port_(port), delegate_(&delegate) {
-  connect(&socket_, &QTcpSocket::connected, this,
-          &ServerConnectionImpl::OnConnected);
-  connect(&socket_, &QTcpSocket::disconnected, this,
-          &ServerConnectionImpl::OnDisconnected);
-  connect(&socket_, &QTcpSocket::errorOccurred, this,
-          &ServerConnectionImpl::OnError);
-  connect(&socket_, &QTcpSocket::readyRead, this,
-          &ServerConnectionImpl::OnReadyRead);
+  connect(&socket_, &QTcpSocket::connected, this, &ServerConnectionImpl::OnConnected);
+  connect(&socket_, &QTcpSocket::disconnected, this, &ServerConnectionImpl::OnDisconnected);
+  connect(&socket_, &QTcpSocket::errorOccurred, this, &ServerConnectionImpl::OnError);
+  connect(&socket_, &QTcpSocket::readyRead, this, &ServerConnectionImpl::OnReadyRead);
 }
+
+ServerConnectionImpl::~ServerConnectionImpl() { socket_.disconnect(); }
 
 void ServerConnectionImpl::Connect() {
   assert(!connected_);
@@ -82,8 +119,8 @@ bool ServerConnectionImpl::SendMessage(uint64_t id, ClientMessageType type,
   full_header.header.type = hton(full_header.header.type);
   std::memset(full_header.header.unused, 0, sizeof(full_header.header.unused));
 
-  if (socket_.write(reinterpret_cast<const char*>(&full_header),
-                    sizeof(full_header)) != sizeof(full_header)) {
+  if (socket_.write(reinterpret_cast<const char*>(&full_header), sizeof(full_header)) !=
+      sizeof(full_header)) {
     LOG(ERROR) << "Unable to send network header via socket";
     return false;
   }
@@ -115,19 +152,17 @@ void ServerConnectionImpl::OnReadyRead() {
     auto msg = reassembler_.PopMessage();
     NetworkHeader header;
     if (ParseNetworkHeader(msg, header)) {
-      delegate_->HandleReceieved(header.id,
-                                 static_cast<ServerMessageType>(header.type),
+      delegate_->HandleReceieved(header.id, static_cast<ServerMessageType>(header.type),
                                  msg.mid(sizeof(NetworkHeader)));
     } else {
-      LOG(ERROR) << "Unable to parse network header (size was: " << msg.size()
-                 << ")";
+      LOG(ERROR) << "Unable to parse network header (size was: " << msg.size() << ")";
     }
   }
 }
 
 void ServerConnectionImpl::OnError(QAbstractSocket::SocketError err) {
   if (connected_) {
-    LOG(ERROR) << "Connection error occured: " << err;
+    LOG(ERROR) << "ServerConnection error occured: " << err;
   } else {
     delegate_->HandleConnected(false);
   }

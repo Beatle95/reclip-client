@@ -9,7 +9,7 @@ module;
 
 export module communication.message_reassembler;
 
-import byte_swap;
+import base.byte_swap;
 
 namespace {
 constexpr uint64_t kMaxMessageSize = 1 * 1024 * 1024 * 1024;

@@ -5,7 +5,7 @@
 
 import communication.message_reassembler;
 
-import byte_swap;
+import base.byte_swap;
 
 using namespace reclip;
 

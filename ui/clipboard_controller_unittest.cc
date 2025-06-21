@@ -30,14 +30,11 @@ class ModelControllerIntegrationTest : public ::testing::Test {
   ModelControllerIntegrationTest()
       : app_(argc, argv),
         model_(std::make_unique<ClipboardModel>()),
-        controller_(std::make_unique<ClipboardController>(model_.get(),
-                                                          &mock_clipboard_)) {
+        controller_(std::make_unique<ClipboardController>(model_.get(), &mock_clipboard_)) {
     model_->AddObserver(controller_.get());
   }
 
-  ~ModelControllerIntegrationTest() {
-    model_->RemoveObserver(controller_.get());
-  }
+  ~ModelControllerIntegrationTest() { model_->RemoveObserver(controller_.get()); }
 
   MockClipboard& clipboard() { return mock_clipboard_; }
   ClipboardModel& model() { return *model_; }
@@ -57,18 +54,14 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   ASSERT_NE(window, nullptr);
   ASSERT_EQ(window->HostsCount(), 1);
 
-  const auto name = model().GetThisHostData().name;
-  EXPECT_TRUE(model().AdoptThisHostData(name, {.text = {"text1", "text2"}}));
+  EXPECT_TRUE(model().AdoptThisHostData("id", "name", {.text = {"text1", "text2"}}));
   ASSERT_EQ(window->HostsCount(), 1);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
 
   model().ResetHostsData({
-      HostData{.id = "host_id1",
-               .name = "host1",
-               .data = ClipboardData{.text = {"text0"}}},
-      HostData{.id = "host_id2",
-               .name = "host2",
-               .data = ClipboardData{.text = {"text1", "text2"}}},
+      HostData{.id = "host_id1", .name = "host1", .data = ClipboardData{.text = {"text0"}}},
+      HostData{
+          .id = "host_id2", .name = "host2", .data = ClipboardData{.text = {"text1", "text2"}}},
   });
   ASSERT_EQ(window->HostsCount(), 3);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
@@ -78,10 +71,8 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   model().ResetHostsData({});
   ASSERT_EQ(window->HostsCount(), 1);
 
-  model().SetHostData(
-      HostData{.id = "host_id3",
-               .name = "host",
-               .data = ClipboardData{.text = {"text1", "text2"}}});
+  model().SetHostData(HostData{
+      .id = "host_id3", .name = "host", .data = ClipboardData{.text = {"text1", "text2"}}});
   ASSERT_EQ(window->HostsCount(), 2u);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
   EXPECT_EQ(window->GetHostView(1)->GetTextItemsCount(), 2u);
