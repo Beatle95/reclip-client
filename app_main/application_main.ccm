@@ -1,20 +1,45 @@
-#include "app_main/application_main.h"
-#include "moc_application_main.cpp"
+module;
 
+#include <QApplication>
+#include <memory>
 #include <QTimer>
 #include <cassert>
 
 #include "base/log.h"
 #include "core/clipboard.h"
 
+export module app_main.application_main;
+
+import base.observer_helper;
 import base.preferences;
 import core.clipboard_model;
 import communication.communication_manager;
 import ui.clipboard_controller;
 
-const auto kShowUiOnStartupArg = QStringLiteral("--show_ui_on_startup");
-
 namespace reclip {
+
+export class ApplicationMain : public QApplication {
+ public:
+  ApplicationMain(int argc, char** argv);
+  ~ApplicationMain();
+
+ private:
+  void ShowUi();
+  void HideUi();
+  void PrefInit();
+
+  std::unique_ptr<Clipboard> clipboard_;
+  std::unique_ptr<ClipboardModel> model_;
+  std::unique_ptr<CommunicationManager> communication_host_;
+  std::unique_ptr<ClipboardController> controller_;
+
+  ScopedObservation<ClipboardModel, Clipboard> model_observation_;
+  ScopedObservation<ClipboardController, ClipboardModel> controller_observation_;
+};
+
+namespace {
+const auto kShowUiOnStartupArg = QStringLiteral("--show_ui_on_startup");
+}
 
 ApplicationMain::ApplicationMain(int argc, char** argv)
     : QApplication(argc, argv) {

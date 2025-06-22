@@ -1,8 +1,12 @@
 target_sources(
     reclip_app_main PRIVATE
     main.cc
-    application_main.h
-    application_main.cc
+)
+target_sources(
+  reclip_app_main
+  PUBLIC
+    FILE_SET base_modules TYPE CXX_MODULES FILES
+    application_main.ccm
 )
 
 target_link_libraries(

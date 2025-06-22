@@ -1,6 +1,5 @@
 #include <QtCore/qcoreapplication.h>
 #include <QtCore/qeventloop.h>
-#include <app_main/application_main.h>
 #include <core/clipboard.h>
 #include <gtest/gtest.h>
 
