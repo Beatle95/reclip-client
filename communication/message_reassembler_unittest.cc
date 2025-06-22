@@ -20,8 +20,7 @@ TestData CreateTestBuffer(uint64_t desired_data_len) {
   QByteArray full_data;
   full_data.resize(desired_data_len + sizeof(uint64_t));
   const uint64_t len = hton(desired_data_len);
-  std::memcpy(full_data.data(), reinterpret_cast<const char*>(&len),
-              sizeof(len));
+  std::memcpy(full_data.data(), reinterpret_cast<const char*>(&len), sizeof(len));
 
   char ch = 0;
   for (int64_t i = sizeof(len); i < full_data.size(); ++i) {
@@ -48,11 +47,11 @@ TEST(MessageReassembler, CorrectMessages) {
   const auto result_msg = assembler.PopMessage();
   ASSERT_FALSE(assembler.HasMessage());
   EXPECT_EQ(result_msg, test_data.data_only);
+  EXPECT_FALSE(assembler.IsBroken());
 
   for (int64_t step_size = 1; step_size < 128; step_size += 8) {
     int64_t offset = 0;
-    for (; offset + step_size < test_data.data_and_len.size();
-         offset += step_size) {
+    for (; offset + step_size < test_data.data_and_len.size(); offset += step_size) {
       auto data = test_data.data_and_len.mid(offset, step_size);
       assembler.Process(data);
     }
@@ -78,6 +77,28 @@ TEST(MessageReassembler, CorrectMessages) {
     EXPECT_EQ(result_msg, test_data.data_only);
   }
   ASSERT_FALSE(assembler.HasMessage());
+  EXPECT_FALSE(assembler.IsBroken());
 }
 
-// TODO: Tests for wrong input.
+TEST(MessageReassembler, IncorrectMessages) {
+  // Zero length.
+  auto test_data = CreateTestBuffer(0);
+  MessageReassembler assembler;
+  assembler.Process(test_data.data_and_len);
+  EXPECT_FALSE(assembler.HasMessage());
+  assembler.Process(CreateTestBuffer(1).data_and_len);
+  EXPECT_TRUE(assembler.HasMessage());
+  EXPECT_EQ(assembler.PopMessage().size(), 1u);
+  EXPECT_FALSE(assembler.HasMessage());
+  EXPECT_FALSE(assembler.IsBroken());
+
+  // Too long length.
+  static constexpr int kSomeAdditionalDataSize = 1024;
+  QByteArray len_data;
+  len_data.resize(sizeof(uint64_t) + kSomeAdditionalDataSize);
+  const uint64_t len = hton(2ull * 1024 * 1024 * 1024);
+  std::memcpy(len_data.data(), reinterpret_cast<const char*>(&len), sizeof(len));
+  assembler.Process(len_data);
+  EXPECT_FALSE(assembler.HasMessage());
+  EXPECT_TRUE(assembler.IsBroken());
+}

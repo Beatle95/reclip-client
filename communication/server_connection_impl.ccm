@@ -143,9 +143,20 @@ void ServerConnectionImpl::OnDisconnected() {
 }
 
 void ServerConnectionImpl::OnReadyRead() {
+  if (reassembler_.IsBroken()) {
+    // This could happen if we have entered disconnected state, but before disconnection, server has
+    // sent some data to us. Just ignore it and wait for disconnection.
+    return;
+  }
+
   auto data = socket_.readAll();
   if (!data.isEmpty()) {
     reassembler_.Process(data);
+    if (reassembler_.IsBroken()) {
+      LOG(ERROR) << "ServerConnection reassembler has entered broken state";
+      socket_.disconnectFromHost();
+      return;
+    }
   }
 
   while (reassembler_.HasMessage()) {
