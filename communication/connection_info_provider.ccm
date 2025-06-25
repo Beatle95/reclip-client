@@ -1,19 +1,23 @@
 module;
 
+#include <QFile>
+#include <QJsonDocument>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 
 export module communication.connection_info_provider;
 
+import base.constants;
 import core.host_types;
-import base.preferences;
 
 namespace reclip {
 
 export class ConnectionInfoProvider {
  public:
-  static std::unique_ptr<ConnectionInfoProvider> Create();
+  static std::unique_ptr<ConnectionInfoProvider> Create(std::string_view config_path);
   virtual ~ConnectionInfoProvider() = default;
   virtual HostSecret GetSecret() const = 0;
   virtual const std::string& GetIp() const = 0;
@@ -22,23 +26,38 @@ export class ConnectionInfoProvider {
 
 class ConnectionInfoProviderImpl : public ConnectionInfoProvider {
  public:
+  explicit ConnectionInfoProviderImpl(std::string_view config_path);
   ~ConnectionInfoProviderImpl() override = default;
 
-  HostSecret GetSecret() const override {
-    return Preferences::GetInstance().GetHostSecret();
-  }
+  HostSecret GetSecret() const override { return host_secret_; }
+  const std::string& GetIp() const override { return server_ip_; }
+  uint16_t GetPort() const override { return server_port_; }
 
-  const std::string& GetIp() const override {
-    return Preferences::GetInstance().GetServerIp();
-  }
-
-  uint16_t GetPort() const override {
-    return Preferences::GetInstance().GetServerPort();
-  }
+ private:
+  HostSecret host_secret_;
+  std::string server_ip_;
+  uint16_t server_port_;
 };
 
-std::unique_ptr<ConnectionInfoProvider> ConnectionInfoProvider::Create() {
-  return std::make_unique<ConnectionInfoProviderImpl>();
+std::unique_ptr<ConnectionInfoProvider> ConnectionInfoProvider::Create(
+    std::string_view config_path) {
+  return std::make_unique<ConnectionInfoProviderImpl>(config_path);
+}
+
+ConnectionInfoProviderImpl::ConnectionInfoProviderImpl(std::string_view config_path) {
+  const auto path = QString::fromUtf8(config_path.data(), config_path.size());
+  QFile file(path);
+  if (!file.open(QIODevice::ReadOnly)) {
+    throw std::runtime_error("Failed to open preferences file");
+  }
+
+  const auto json = QJsonDocument::fromJson(file.readAll());
+  if (json.isNull()) {
+    throw std::runtime_error("Failed to parse preferences file");
+  }
+  host_secret_ = json["secret"].toString().toStdString();
+  server_ip_ = json["server_ip"].toString("127.0.0.1").toStdString();
+  server_port_ = json["server_port"].toInt(kDefaultServerPort);
 }
 
 }  // namespace reclip

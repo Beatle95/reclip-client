@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <cassert>
 #include <memory>
+#include <string>
 
 import communication.message_types;
 import communication.serialization;
@@ -61,6 +62,17 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
   std::optional<TextUpdateResponse> new_text_;
 };
 
+class MockConnectionInfoProvider : public ConnectionInfoProvider {
+ public:
+  ~MockConnectionInfoProvider() override = default;
+  HostSecret GetSecret() const override { return {}; };
+  const std::string& GetIp() const override {
+    static constexpr std::string kEmptyString{};
+    return kEmptyString;
+  }
+  uint16_t GetPort() const override { return {}; }
+};
+
 class MockServerDelegate : public ServerDelegate {
  public:
   MOCK_METHOD0(GetConnectionInfoProvider, ConnectionInfoProvider&());
@@ -71,12 +83,11 @@ class MockServerDelegate : public ServerDelegate {
   MOCK_METHOD1(HostSynced, void(HostData data));
 
   MockServerDelegate() {
-    ON_CALL(*this, GetConnectionInfoProvider).WillByDefault(ReturnRef(*provider_));
+    ON_CALL(*this, GetConnectionInfoProvider).WillByDefault(ReturnRef(provider_));
   }
 
  private:
-  std::unique_ptr<ConnectionInfoProvider> provider_ =
-      ConnectionInfoProvider::Create();
+  MockConnectionInfoProvider provider_;
 };
 
 class MockConnection : public ServerConnection {

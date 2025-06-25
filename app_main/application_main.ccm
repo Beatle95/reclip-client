@@ -1,32 +1,49 @@
 module;
 
 #include <QApplication>
-#include <memory>
+#include <QCommandLineOption>
+#include <QCommandLineParser>
+#include <QDir>
+#include <QStandardPaths>
 #include <QTimer>
 #include <cassert>
+#include <format>
+#include <memory>
+#include <stdexcept>
 
 #include "base/log.h"
 #include "core/clipboard.h"
 
 export module app_main.application_main;
 
+import base.constants;
 import base.observer_helper;
 import base.preferences;
 import core.clipboard_model;
+import communication.connection_info_provider;
 import communication.communication_manager;
 import ui.clipboard_controller;
 
 namespace reclip {
+
+struct InitArguments {
+  QString user_data_dir;
+  bool show_ui_on_startup = false;
+};
 
 export class ApplicationMain : public QApplication {
  public:
   ApplicationMain(int argc, char** argv);
   ~ApplicationMain();
 
+  QDir GetUserDataDir() const { return user_data_dir_; }
+
  private:
-  void ShowUi();
-  void HideUi();
+  InitArguments ParseArgs();
+  void InitAppData(const QString& user_overriden_data_dir);
   void PrefInit();
+
+  QDir user_data_dir_;
 
   std::unique_ptr<Clipboard> clipboard_;
   std::unique_ptr<ClipboardModel> model_;
@@ -37,26 +54,30 @@ export class ApplicationMain : public QApplication {
   ScopedObservation<ClipboardController, ClipboardModel> controller_observation_;
 };
 
-namespace {
-const auto kShowUiOnStartupArg = QStringLiteral("--show_ui_on_startup");
-}
-
 ApplicationMain::ApplicationMain(int argc, char** argv)
     : QApplication(argc, argv) {
   DLOG(INFO) << "Application::Ctor";
-  PrefInit();
-  model_ = std::make_unique<ClipboardModel>();
+  setApplicationName(QString::fromUtf8(kAppName.data(), kAppName.size()));
+  setApplicationVersion(QStringLiteral("0.0.1"));
 
+  const auto init_args = ParseArgs();
+  InitAppData(init_args.user_data_dir);
+  Preferences::Init((user_data_dir_.absolutePath() + "/preferences.json").toStdString());
+  auto conn_info_provider = ConnectionInfoProvider::Create(
+      (user_data_dir_.absolutePath() + "/server_config.json").toStdString());
+
+  model_ = std::make_unique<ClipboardModel>();
   clipboard_ = Clipboard::Create();
   clipboard_->Start();
   model_observation_.Reset(*model_, *clipboard_);
 
-  communication_host_ = std::make_unique<CommunicationManager>(*model_);
+  communication_host_ =
+      std::make_unique<CommunicationManager>(*model_, std::move(conn_info_provider));
   controller_ =
       std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
   controller_observation_.Reset(*controller_, *model_);
 
-  if (arguments().contains(kShowUiOnStartupArg)) {
+  if (init_args.show_ui_on_startup) {
     QTimer::singleShot(0, [this]() { controller_->ShowUi(); });
   }
 }
@@ -66,8 +87,35 @@ ApplicationMain::~ApplicationMain() {
   clipboard_->Stop();
 }
 
-void ApplicationMain::PrefInit() {
-  Preferences::GetInstance().SetHostSecret("this_host_secret");
+InitArguments ApplicationMain::ParseArgs() {
+  QCommandLineParser parser;
+  parser.setApplicationDescription("Reclip allows to synchronize clipboards of multiple devices.");
+  parser.addHelpOption();
+  parser.addVersionOption();
+
+  QCommandLineOption show_ui_on_startup("show_ui_on_startup",
+                                        "Show UI right after application is started.");
+  parser.addOption(show_ui_on_startup);
+  QCommandLineOption user_data_dir("user_data_dir", "Overrides default user data directrory path.",
+                                   "path");
+  parser.addOption(user_data_dir);
+
+  parser.process(arguments());
+  return {.user_data_dir = parser.value(user_data_dir),
+          .show_ui_on_startup = parser.isSet(show_ui_on_startup)};
+}
+
+void ApplicationMain::InitAppData(const QString& user_overriden_data_dir) {
+  user_data_dir_ = !user_overriden_data_dir.isEmpty()
+                       ? user_overriden_data_dir
+                       : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+  if (!user_data_dir_.exists() && !user_data_dir_.mkpath(".")) {
+    // TODO: Instead of throwing we want to show some dialog which will help to set up an
+    // application.
+    throw std::runtime_error(std::format("Failed to create user data directory: '{}'",
+                                         user_data_dir_.absolutePath().toStdString()));
+  }
+  DLOG(INFO) << "User data directory: " << user_data_dir_.absolutePath().toStdString();
 }
 
 }  // namespace reclip
