@@ -1,0 +1,77 @@
+module;
+
+#include <QFile>
+#include <QJsonDocument>
+#include <cassert>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+
+export module base.preferences;
+
+namespace reclip {
+
+export class Preferences {
+ public:
+  static void Init(std::string_view prefs_path);
+  static void StorePrefs(std::string_view prefs_path);
+  static Preferences& GetInstance();
+
+  Preferences(const Preferences&) = delete;
+  Preferences& operator=(const Preferences&) = delete;
+  Preferences(Preferences&&) = delete;
+  Preferences& operator=(Preferences&&) = delete;
+
+  void SetString(std::string_view key, std::string_view value);
+  void SetInt(std::string_view key, int64_t value);
+
+  std::string_view GetString(std::string_view key) const;
+  int64_t GetInt(std::string_view key) const;
+
+ private:
+  static Preferences& GetInstanceImpl();
+  Preferences() = default;
+
+  std::unordered_map<std::string, std::string> string_prefs_;
+  std::unordered_map<std::string, int64_t> int_prefs_;
+  bool initialized_ = false;
+};
+
+void Preferences::Init(std::string_view prefs_path) {
+  auto& instance = GetInstanceImpl();
+  assert(!instance.initialized_);
+  
+  const auto path = QString::fromUtf8(prefs_path.data(), prefs_path.size());
+  QFile file(path);
+  if (!file.open(QIODevice::ReadOnly)) {
+    throw std::runtime_error("Failed to open preferences file");
+  }
+
+  const auto json = QJsonDocument::fromJson(file.readAll());
+  if (json.isNull()) {
+    throw std::runtime_error("Failed to parse preferences file");
+  }
+
+  // TODO: Load prefs.
+
+  instance.initialized_ = true;
+}
+
+void Preferences::StorePrefs(std::string_view prefs_path) {
+  // TODO: Store prefs.
+  assert(false);
+  (void) prefs_path;
+}
+
+Preferences& Preferences::GetInstance() {
+  assert(GetInstanceImpl().initialized_);
+  return GetInstanceImpl();
+}
+
+Preferences& Preferences::GetInstanceImpl() {
+  static Preferences instance;
+  return instance;
+}
+
+}  // namespace reclip

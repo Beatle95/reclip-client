@@ -1,0 +1,382 @@
+module;
+
+#include <QObject>
+#include <QTimer>
+#include <cassert>
+#include <chrono>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+
+#include "base/log.h"
+
+export module communication.server_impl;
+export import communication.server;
+
+import core.host_types;
+import communication.connection_impl;
+import communication.connection_info_provider;
+import communication.message_types;
+import communication.serialization;
+
+using namespace std::chrono_literals;
+using namespace std::placeholders;
+
+namespace {
+constexpr auto kNetworkTimeoutInterval = std::chrono::seconds(15);
+}  // namespace
+
+namespace reclip {
+
+// This class abstracts server. It manages connection with remote server. It
+// will automatically keep consistant the inner data representation with server.
+export class ServerImpl : public QObject, public Server, public ServerConnection::Delegate {
+ public:
+  enum class ConnectionState { kDisconnected, kConnecting, kIntroducing, kSyncing, kConnected };
+
+  class TestHelper {
+   public:
+    TestHelper();
+    virtual ~TestHelper();
+    virtual std::unique_ptr<ServerConnection> CreateConnection() { return {}; }
+    virtual std::chrono::milliseconds GetReconnectDuration() { return 0ms; }
+  };
+
+  explicit ServerImpl(ServerDelegate& delegate);
+  ~ServerImpl() override;
+
+  // Server overrides:
+  void Disconnect(std::function<void(bool)> callback, std::chrono::milliseconds timeout) override;
+  void RequestHostSync(const HostId& id, HostSyncCallback callback) override;
+  void SyncThisHost(const HostData& data) override;
+  void AddThisHostText(const std::string& text) override;
+
+  // ServerConnection::Delegate overrides:
+  void HandleConnected(bool is_connected) override;
+  void HandleDisconnected() override;
+  void HandleReceieved(uint64_t id, ServerMessageType type, const QByteArray& data) override;
+
+  ConnectionState GetStateForTesting() const;
+
+ private:
+  using ResponceCallback = std::function<void(const QByteArray&)>;
+  struct AwaitingResponce {
+    ResponceCallback callback;
+    QTimer timeout_timer;
+  };
+
+  void DisconnectTimeout();
+  void ConnectImpl();
+  void SendIntroduction();
+  void RequestFullSync();
+
+  void ProcessIntroduction(const QByteArray& data);
+  void ProcessHostConnected(const QByteArray& data);
+  void ProcessHostDisconnected(const QByteArray& data);
+  void ProcessHostTextUpdate(const QByteArray& data);
+  void ProcessHostSynced(const QByteArray& data);
+
+  uint64_t GenerateId();
+  void InitResponseAwaiting(uint64_t id, ResponceCallback callback,
+                            std::chrono::seconds timeout = kNetworkTimeoutInterval);
+  void InitAndRunTimeoutTimer(QTimer& timer, std::chrono::seconds timeout);
+  void Reset();
+
+  std::function<void(bool)> disconnect_callback_;
+  ServerDelegate* delegate_;
+  std::unique_ptr<ServerConnection> connection_;
+  std::unordered_map<uint64_t, AwaitingResponce> awaiting_responces_;
+  uint64_t id_counter_ = 0;
+
+  QTimer reconnect_timer_;
+  QTimer disconnect_timer_;
+  QTimer connection_timer_;
+  ConnectionState state_ = ConnectionState::kDisconnected;
+};
+
+namespace {
+ServerImpl::TestHelper* g_test_helper = nullptr;
+}  // namespace
+
+ServerImpl::TestHelper::TestHelper() {
+  assert(g_test_helper == nullptr);
+  g_test_helper = this;
+}
+
+ServerImpl::TestHelper::~TestHelper() {
+  assert(g_test_helper == this);
+  g_test_helper = nullptr;
+}
+
+ServerImpl::ServerImpl(ServerDelegate& delegate) : delegate_(&delegate) {
+  std::unique_ptr<ServerConnection> test_connection =
+      g_test_helper ? g_test_helper->CreateConnection() : nullptr;
+  if (test_connection) {
+    connection_ = std::move(test_connection);
+  } else {
+    ConnectionInfoProvider& provider = delegate_->GetConnectionInfoProvider();
+    connection_ = std::make_unique<ServerConnectionImpl>(
+        *this, QString::fromStdString(provider.GetIp()), provider.GetPort());
+  }
+
+  assert(connection_);
+  reconnect_timer_.setInterval(0s);
+  reconnect_timer_.setSingleShot(true);
+  connect(&reconnect_timer_, &QTimer::timeout, this, &ServerImpl::ConnectImpl);
+  connect(&disconnect_timer_, &QTimer::timeout, this, &ServerImpl::DisconnectTimeout);
+  // It is better if Connect will be handled in one place, so I don't call it in
+  // constructor.
+  reconnect_timer_.start();
+}
+
+ServerImpl::~ServerImpl() = default;
+
+void ServerImpl::Disconnect(std::function<void(bool)> callback, std::chrono::milliseconds timeout) {
+  if (state_ == ConnectionState::kDisconnected) {
+    callback(true);
+    return;
+  }
+  if (state_ == ConnectionState::kConnecting) {
+    connection_->Disconnect();
+    callback(true);
+    return;
+  }
+
+  if (disconnect_callback_) {
+    assert(false && "Disconnection requested twice");
+    return;
+  }
+  disconnect_callback_ = std::move(callback);
+  disconnect_timer_.start(timeout);
+  connection_->Disconnect();
+}
+
+void ServerImpl::DisconnectTimeout() {
+  if (disconnect_callback_) {
+    disconnect_callback_(false);
+  }
+}
+
+void ServerImpl::ConnectImpl() {
+  LOG(INFO) << "Connecting to server\n";
+  reconnect_timer_.setInterval(g_test_helper ? g_test_helper->GetReconnectDuration() : 3s);
+  state_ = ConnectionState::kConnecting;
+  connection_->Connect();
+  InitAndRunTimeoutTimer(connection_timer_, kNetworkTimeoutInterval);
+}
+
+void ServerImpl::HandleConnected(bool is_connected) {
+  assert(state_ == ConnectionState::kConnecting);
+  if (is_connected) {
+    LOG(INFO) << "Connected to server";
+    SendIntroduction();
+  } else {
+    LOG(INFO) << "ServerConnection is not successful";
+    Reset();
+  }
+}
+
+void ServerImpl::SendIntroduction() {
+  assert(state_ == ConnectionState::kConnecting);
+  state_ = ConnectionState::kIntroducing;
+  const auto msg_id = GenerateId();
+  const auto serialized_data =
+      SerializeIntroduction(delegate_->GetConnectionInfoProvider().GetSecret());
+  if (!connection_->SendMessage(msg_id, ClientMessageType::kIntroduction, serialized_data)) {
+    LOG(ERROR) << "Sending introduction error";
+    connection_->Disconnect();
+    return;
+  }
+}
+
+void ServerImpl::ProcessIntroduction(const QByteArray& data) {
+  assert(state_ == ConnectionState::kIntroducing);
+  const IntroductionResponse response = ParseIntroductionResponse(data);
+  if (response.success) {
+    LOG(INFO) << "Server introduction success.";
+    RequestFullSync();
+  } else {
+    LOG(ERROR) << "Server introduction failure: '" << response.error << "'";
+    connection_->Disconnect();
+  }
+}
+
+void ServerImpl::RequestFullSync() {
+  assert(state_ == ConnectionState::kIntroducing);
+  state_ = ConnectionState::kSyncing;
+  connection_timer_.stop();
+
+  const auto msg_id = GenerateId();
+  if (!connection_->SendMessage(msg_id, ClientMessageType::kFullSyncRequest, {})) {
+    LOG(ERROR) << "Sending sync request error";
+    connection_->Disconnect();
+    return;
+  }
+
+  InitResponseAwaiting(msg_id, [this](const QByteArray& data) {
+    assert(state_ == ConnectionState::kSyncing);
+    auto response = ParseSyncResponse(data);
+    if (response.has_value()) {
+      LOG(INFO) << "Server sync success";
+      state_ = ConnectionState::kConnected;
+      delegate_->OnFullSync(std::move(response->this_host_data), std::move(response->hosts_data));
+    } else {
+      LOG(ERROR) << "Got wrong sync response from server";
+      connection_->Disconnect();
+    }
+  });
+}
+
+void ServerImpl::RequestHostSync(const HostId& id, HostSyncCallback callback) {
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
+  const auto msg_id = GenerateId();
+  if (!connection_->SendMessage(msg_id, ClientMessageType::kHostSyncRequest,
+                                SerializeHostSyncRequest(id))) {
+    return;
+  }
+
+  InitResponseAwaiting(msg_id, [this, callback = std::move(callback)](const QByteArray& data) {
+    if (state_ == ConnectionState::kConnected) {
+      callback(ParseHostData(data));
+    }
+  });
+}
+
+void ServerImpl::SyncThisHost(const HostData& data) {
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
+  connection_->SendMessage(GenerateId(), ClientMessageType::kSyncThisHost, SerializeHostSync(data));
+}
+
+void ServerImpl::AddThisHostText(const std::string& text) {
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
+  connection_->SendMessage(GenerateId(), ClientMessageType::kHostTextUpdate,
+                           SerializeTextUpdate(text));
+}
+
+void ServerImpl::ProcessHostConnected(const QByteArray& data) {
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
+  if (auto id = ParseHostId(data)) {
+    delegate_->HostConnected(id.value());
+  } else {
+    LOG(ERROR) << "Unable to parse connected host id";
+  }
+}
+
+void ServerImpl::ProcessHostDisconnected(const QByteArray& data) {
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
+  if (auto id = ParseHostId(data)) {
+    delegate_->HostDisconnected(id.value());
+  } else {
+    LOG(ERROR) << "Unable to parse disconnected host id";
+  }
+}
+
+void ServerImpl::ProcessHostTextUpdate(const QByteArray& data) {
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
+  auto text_data = ParseNewText(data);
+  if (!text_data.has_value()) {
+    LOG(ERROR) << "Got wrong text update notification from server";
+    return;
+  }
+  delegate_->HostTextAdded(text_data->id, text_data->text);
+}
+
+void ServerImpl::ProcessHostSynced(const QByteArray& data) {
+  if (state_ != ConnectionState::kConnected) {
+    return;
+  }
+  if (auto host_data = ParseHostData(data)) {
+    delegate_->HostSynced(std::move(host_data.value()));
+  } else {
+    LOG(ERROR) << "Error parsing host data in host sync notification";
+  }
+}
+
+void ServerImpl::HandleDisconnected() {
+  assert(state_ != ConnectionState::kDisconnected);
+  assert(!reconnect_timer_.isActive());
+  LOG(INFO) << "Disconnected from server";
+  Reset();
+
+  if (disconnect_callback_) {
+    disconnect_callback_(true);
+  }
+}
+
+void ServerImpl::HandleReceieved(uint64_t id, ServerMessageType type, const QByteArray& data) {
+  switch (type) {
+    case ServerMessageType::kIntroduction:
+      ProcessIntroduction(data);
+      return;
+    case ServerMessageType::kHostConnected:
+      ProcessHostConnected(data);
+      return;
+    case ServerMessageType::kHostDisconnected:
+      ProcessHostDisconnected(data);
+      return;
+    case ServerMessageType::kTextUpdate:
+      ProcessHostTextUpdate(data);
+      return;
+    case ServerMessageType::kHostSynced:
+      ProcessHostSynced(data);
+      return;
+
+    case ServerMessageType::kServerResponse: {
+      const auto it = awaiting_responces_.find(id);
+      if (it != awaiting_responces_.end()) {
+        it->second.callback(data);
+        awaiting_responces_.erase(it);
+      } else {
+        LOG(ERROR) << "Received server responce for unknown message id: " << id;
+      }
+      return;
+    }
+  }
+  LOG(ERROR) << "Server has sent the message with unexpected message type: "
+             << static_cast<int>(type);
+}
+
+ServerImpl::ConnectionState ServerImpl::GetStateForTesting() const { return state_; }
+
+uint64_t ServerImpl::GenerateId() { return id_counter_++; }
+
+void ServerImpl::InitResponseAwaiting(uint64_t id, ResponceCallback callback,
+                                      std::chrono::seconds timeout) {
+  assert(!awaiting_responces_.contains(id));
+  auto& response = awaiting_responces_[id];
+  response.callback = std::move(callback);
+  InitAndRunTimeoutTimer(response.timeout_timer, timeout);
+}
+
+void ServerImpl::InitAndRunTimeoutTimer(QTimer& timer, std::chrono::seconds timeout) {
+  connect(&timer, &QTimer::timeout, [this]() { connection_->Disconnect(); });
+  timer.setSingleShot(true);
+  timer.start(timeout);
+}
+
+void ServerImpl::Reset() {
+  state_ = ConnectionState::kDisconnected;
+  awaiting_responces_.clear();
+  connection_timer_.stop();
+  assert(!reconnect_timer_.isActive());
+  if (!disconnect_callback_) {
+    // We have entered disonnected state.
+    reconnect_timer_.start();
+  }
+}
+
+}  // namespace reclip

@@ -1,0 +1,269 @@
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include <QTimer>
+#include <cassert>
+#include <memory>
+#include <string>
+
+import communication.message_types;
+import communication.serialization;
+import communication.connection_info_provider;
+import communication.server_impl;
+import communication.server_connection;
+import core.host_types;
+import core.test_with_event_loop_base;
+
+using namespace reclip;
+using namespace ::testing;
+using namespace std::chrono_literals;
+
+class SerializationTestHelperImpl : public SerializationTestHelper {
+ public:
+  ~SerializationTestHelperImpl() override = default;
+
+  void SetIntroductionResult(auto&& val) { 
+    introduction_ = std::forward<decltype(val)>(val); 
+  }
+  void SetSyncResult(auto&& val) { 
+    sync_ = std::forward<decltype(val)>(val); 
+  }
+  void SetHostIdResult(auto&& val) {
+    host_id_ = std::forward<decltype(val)>(val);
+  }
+  void SetHostDataResult(auto&& val) {
+    host_data_ = std::forward<decltype(val)>(val);
+  }
+  void SetNewTextResult(auto&& val) {
+    new_text_ = std::forward<decltype(val)>(val);
+  }
+
+  IntroductionResponse ParseIntroductionResponse(const QByteArray&) override {
+    return introduction_;
+  }
+  std::optional<SyncResponse> ParseSyncResponse(const QByteArray&) override {
+    return sync_;
+  }
+  std::optional<HostId> ParseHostId(const QByteArray&) override {
+    return host_id_;
+  }
+  std::optional<HostData> ParseHostData(const QByteArray&) override {
+    return host_data_;
+  }
+  std::optional<TextUpdateResponse> ParseNewText(const QByteArray&) override {
+    return new_text_;
+  }
+
+ private:
+  IntroductionResponse introduction_;
+  std::optional<SyncResponse> sync_;
+  std::optional<HostId> host_id_;
+  std::optional<HostData> host_data_;
+  std::optional<TextUpdateResponse> new_text_;
+};
+
+class MockConnectionInfoProvider : public ConnectionInfoProvider {
+ public:
+  ~MockConnectionInfoProvider() override = default;
+  HostSecret GetSecret() const override { return {}; };
+  const std::string& GetIp() const override {
+    static constexpr std::string kEmptyString{};
+    return kEmptyString;
+  }
+  uint16_t GetPort() const override { return {}; }
+};
+
+class MockServerDelegate : public ServerDelegate {
+ public:
+  MOCK_METHOD0(GetConnectionInfoProvider, ConnectionInfoProvider&());
+  MOCK_METHOD2(OnFullSync, void(HostData, std::vector<HostData>));
+  MOCK_METHOD1(HostConnected, void(const HostId& id));
+  MOCK_METHOD1(HostDisconnected, void(const HostId& id));
+  MOCK_METHOD2(HostTextAdded, void(const HostId& id, const std::string& text));
+  MOCK_METHOD1(HostSynced, void(HostData data));
+
+  MockServerDelegate() {
+    ON_CALL(*this, GetConnectionInfoProvider).WillByDefault(ReturnRef(provider_));
+  }
+
+ private:
+  MockConnectionInfoProvider provider_;
+};
+
+class MockConnection : public ServerConnection {
+ public:
+  MOCK_METHOD0(Connect, void());
+  MOCK_METHOD0(Disconnect, void());
+  MOCK_METHOD3(SendMessage,
+               bool(uint64_t, ClientMessageType, const QByteArray&));
+
+  MockConnection() {
+    ON_CALL(*this, Connect).WillByDefault([this]() {
+      if (delegate_) {
+        QTimer::singleShot(1ms, [&]() { delegate_->HandleConnected(true); });
+      }
+    });
+
+    ON_CALL(*this, Disconnect).WillByDefault([this]() {
+      if (delegate_) {
+        QTimer::singleShot(1ms, [&]() { delegate_->HandleDisconnected(); });
+      }
+    });
+
+    ON_CALL(*this, SendMessage)
+        .WillByDefault([this](uint64_t id, ClientMessageType type,
+                              const QByteArray& data) -> bool {
+          if (delegate_) {
+            QTimer::singleShot(1ms, [=, this]() {
+              switch (type) {
+                case ClientMessageType::kIntroduction:
+                  delegate_->HandleReceieved(
+                      id, ServerMessageType::kIntroduction, data);
+                  break;
+                case ClientMessageType::kFullSyncRequest:
+                  delegate_->HandleReceieved(
+                      id, ServerMessageType::kServerResponse, data);
+                  break;
+                default:
+                  break;
+              }
+            });
+          }
+          return true;
+        });
+  }
+
+  void SetDelegate(ServerConnection::Delegate* delegate) { delegate_ = delegate; }
+
+ private:
+  ServerConnection::Delegate* delegate_ = nullptr;
+};
+
+class ServerTestBase : public TestWithEventLoopBase,
+                       public ServerImpl::TestHelper {
+ public:
+  ~ServerTestBase() override = default;
+
+  void ResetServer() {
+    server_delegate_ = std::make_unique<MockServerDelegate>();
+    server_ = std::make_unique<ServerImpl>(*server_delegate_);
+    ASSERT_TRUE(connection_);
+    connection_->SetDelegate(server_.get());
+  }
+
+  void WaitServerConnected() {
+    ASSERT_TRUE(server_);
+    ASSERT_TRUE(connection_);
+    while (server_->GetStateForTesting() !=
+           ServerImpl::ConnectionState::kConnected) {
+      RunEventLoopUntilIdle();
+    }
+  }
+
+  // ServerImpl::TestHelper overrides.
+  std::unique_ptr<ServerConnection> CreateConnection() override {
+    auto ptr = std::make_unique<MockConnection>();
+    connection_ = ptr.get();
+    return std::move(ptr);
+  }
+
+  ServerImpl* server() { return server_.get(); }
+  MockServerDelegate* server_delegate() { return server_delegate_.get(); }
+  MockConnection* connection() { return connection_; }
+
+ private:
+  std::unique_ptr<ServerImpl> server_;
+  std::unique_ptr<MockServerDelegate> server_delegate_;
+  MockConnection* connection_ = nullptr;
+};
+
+namespace {
+SerializationTestHelperImpl CreateCommonSerializationHelper() {
+  SerializationTestHelperImpl result;
+  result.SetIntroductionResult(
+      IntroductionResponse{.server_version = {}, .error = {}, .success = true});
+  result.SetSyncResult(SyncResponse{});
+  result.SetHostIdResult(HostId{});
+  result.SetHostDataResult(HostData{});
+  result.SetNewTextResult(TextUpdateResponse{});
+  return result;
+}
+}  // namespace
+
+TEST_F(ServerTestBase, AutoReconnection) {
+  const auto serializer_helper = CreateCommonSerializationHelper();
+  ResetServer();
+  ASSERT_NE(connection(), nullptr);
+  EXPECT_CALL(*connection(), Connect).Times(1);
+  EXPECT_CALL(*connection(), SendMessage).Times(2);
+  EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
+
+  WaitServerConnected();
+  Mock::VerifyAndClearExpectations(connection());
+  Mock::VerifyAndClearExpectations(server_delegate());
+
+  for (uint32_t i = 0u; i < 5u; ++i) {
+    EXPECT_CALL(*connection(), Connect).Times(1);
+    EXPECT_CALL(*connection(), SendMessage).Times(2);
+    EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
+    EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider)
+        .Times(AnyNumber());
+
+    server()->HandleDisconnected();
+    EXPECT_EQ(server()->GetStateForTesting(),
+              ServerImpl::ConnectionState::kDisconnected);
+    WaitServerConnected();
+    Mock::VerifyAndClearExpectations(connection());
+    Mock::VerifyAndClearExpectations(server_delegate());
+  }
+}
+
+TEST_F(ServerTestBase, ServerClientCommunication) {
+  auto serializer_helper = CreateCommonSerializationHelper();
+  ResetServer();
+  ASSERT_NE(connection(), nullptr);
+  EXPECT_CALL(*connection(), Connect).Times(1);
+  EXPECT_CALL(*connection(), SendMessage).Times(2);
+  EXPECT_CALL(*server_delegate(), OnFullSync).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
+  ASSERT_NE(connection(), nullptr);
+  WaitServerConnected();
+
+  const HostId kKnownId = "known_id";
+  const std::string kIrrelevantText = "some text";
+  constexpr uint64_t kIrrelevantMsgId = 0;
+
+  serializer_helper.SetHostIdResult(kKnownId);
+  EXPECT_CALL(*server_delegate(), HostConnected(kKnownId)).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
+  server()->HandleReceieved(kIrrelevantMsgId, ServerMessageType::kHostConnected,
+                            {});
+  Mock::VerifyAndClearExpectations(server_delegate());
+
+  EXPECT_CALL(*server_delegate(), HostDisconnected(kKnownId)).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
+  server()->HandleReceieved(kIrrelevantMsgId,
+                            ServerMessageType::kHostDisconnected, {});
+  Mock::VerifyAndClearExpectations(server_delegate());
+
+  serializer_helper.SetNewTextResult(
+      TextUpdateResponse{.id = kKnownId, .text = kIrrelevantText});
+  EXPECT_CALL(*server_delegate(), HostTextAdded(kKnownId, kIrrelevantText))
+      .Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
+  server()->HandleReceieved(kIrrelevantMsgId, ServerMessageType::kTextUpdate,
+                            {});
+  Mock::VerifyAndClearExpectations(server_delegate());
+
+  HostData synced_host{
+      .id = kKnownId,
+      .name = "name",
+      .data = {.text = ClipboardTextContainer{kIrrelevantText}}};
+  serializer_helper.SetHostDataResult(synced_host);
+  EXPECT_CALL(*server_delegate(), HostSynced(synced_host)).Times(1);
+  EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
+  server()->HandleReceieved(kIrrelevantMsgId, ServerMessageType::kHostSynced,
+                            {});
+  Mock::VerifyAndClearExpectations(server_delegate());
+}

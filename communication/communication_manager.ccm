@@ -1,0 +1,117 @@
+module;
+
+#include <cassert>
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <optional>
+
+#include "base/log.h"
+
+export module communication.communication_manager;
+
+import base.observer_helper;
+import core.clipboard_model;
+import core.host_types;
+import communication.connection_info_provider;
+import communication.server_impl;
+
+using namespace std::placeholders;
+
+namespace reclip {
+
+export class CommunicationManager : public ServerDelegate, public ClipboardModelObserver {
+ public:
+  explicit CommunicationManager(ClipboardModel& model,
+                                std::unique_ptr<ConnectionInfoProvider> conn_info_provider);
+  ~CommunicationManager() override = default;
+  // TODO: call disconnect upon application closing.
+  void DisconnectFromServer(std::function<void(bool)> callback, std::chrono::milliseconds timeout);
+
+  // ServerDelegate overrides:
+  ConnectionInfoProvider& GetConnectionInfoProvider() override;
+  void OnFullSync(HostData, std::vector<HostData>) override;
+  void HostConnected(const HostId& id) override;
+  void HostDisconnected(const HostId& id) override;
+  void HostTextAdded(const HostId& id, const std::string& text) override;
+  void HostSynced(HostData data) override;
+
+  // ClipboardModelObserver overrides:
+  void OnThisTextPushed() override;
+  void OnThisTextPoped() override {}
+  void OnHostUpdated(size_t) override {}
+  void OnTextPushed(size_t) override {}
+  void OnTextPoped(size_t) override {}
+  void OnThisHostDataReset() override {}
+  void OnHostsDataReset() override {}
+
+  Server* GetServerForTesting() { return server_.get(); }
+
+ private:
+  void OnHostSynced(std::optional<HostData> data);
+
+  ClipboardModel* model_;
+  std::unique_ptr<ConnectionInfoProvider> conn_info_provider_;
+  std::unique_ptr<Server> server_;
+  ScopedObservation<CommunicationManager, ClipboardModel> model_observation_;
+};
+
+CommunicationManager::CommunicationManager(
+    ClipboardModel& model, std::unique_ptr<ConnectionInfoProvider> conn_info_provider)
+    : model_(&model), conn_info_provider_(std::move(conn_info_provider)) {
+  server_ = std::make_unique<ServerImpl>(*this);
+  model_observation_.Reset(*this, model);
+}
+
+void CommunicationManager::DisconnectFromServer(std::function<void(bool)> callback,
+                                                std::chrono::milliseconds timeout) {
+  server_->Disconnect(std::move(callback), timeout);
+}
+
+ConnectionInfoProvider& CommunicationManager::GetConnectionInfoProvider() {
+  assert(conn_info_provider_);
+  return *conn_info_provider_;
+}
+
+void CommunicationManager::OnFullSync(HostData this_host_data, std::vector<HostData> data) {
+  model_->ResetHostsData(std::move(data));
+  if (!model_->AdoptThisHostData(std::move(this_host_data.id), std::move(this_host_data.name),
+                                 std::move(this_host_data.data))) {
+    server_->SyncThisHost(model_->GetThisHostData());
+  }
+}
+
+void CommunicationManager::HostConnected(const HostId& id) {
+  if (!model_->IsHostExists(id)) {
+    server_->RequestHostSync(id, std::bind(&CommunicationManager::OnHostSynced, this, _1));
+  }
+}
+
+void CommunicationManager::HostDisconnected(const HostId& id) {
+  (void)id;
+  // Right now it is not used, but may be used to display state of the host.
+}
+
+void CommunicationManager::HostTextAdded(const HostId& id, const std::string& text) {
+  if (!model_->AddHostText(id, text)) {
+    server_->RequestHostSync(id, std::bind(&CommunicationManager::OnHostSynced, this, _1));
+  }
+}
+
+void CommunicationManager::HostSynced(HostData data) { model_->SetHostData(std::move(data)); }
+
+void CommunicationManager::OnThisTextPushed() {
+  const auto& text_data = model_->GetThisHostData().data.text;
+  assert(!text_data.empty());
+  server_->AddThisHostText(text_data.front());
+}
+
+void CommunicationManager::OnHostSynced(std::optional<HostData> data) {
+  if (data) {
+    HostSynced(std::move(data.value()));
+  } else {
+    LOG(ERROR) << "Unable to sync host";
+  }
+}
+
+}  // namespace reclip
