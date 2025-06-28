@@ -10,6 +10,6 @@ export namespace reclip {
 constexpr std::string_view kAppName = "reclip_client";
 constexpr size_t kMaxContentLogSize = 10;
 constexpr size_t kClipboardSizeMax = 10;
-constexpr uint16_t kDefaultServerPort = 8912;
+constexpr uint16_t kDefaultServerPort = 41286;
 
 }
