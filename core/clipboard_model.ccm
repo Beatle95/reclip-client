@@ -81,8 +81,10 @@ bool ClipboardModel::AdoptThisHostData(const HostId& id, std::string name, Clipb
   this_host_data_.id = id;
 
   bool result = true;
+  bool updated = false;
   if (this_host_data_.name.empty()) {
     this_host_data_.name = std::move(name);
+    updated = true;
   } else if (this_host_data_.name != name) {
     // TODO: Add possibility to change this host name on server.
     // Our name is the right one, so we don't want to update it.
@@ -95,9 +97,7 @@ bool ClipboardModel::AdoptThisHostData(const HostId& id, std::string name, Clipb
     if (this_data.text.empty() && !data.text.empty()) {
       this_data.text.insert(this_data.text.end(), std::make_move_iterator(data.text.begin()),
                             std::make_move_iterator(data.text.end()));
-      for (auto* observer : observers_) {
-        observer->OnThisHostDataReset();
-      }
+      updated = true;
     } else {
       // TODO: For now we just prefer local data, later we want to adopt them
       // more precisely.
@@ -106,6 +106,13 @@ bool ClipboardModel::AdoptThisHostData(const HostId& id, std::string name, Clipb
   } else {
     DLOG(INFO) << "[EVENT] ClipboardModel has received equal this host data";
   }
+
+  if (updated) {
+    for (auto* observer : observers_) {
+      observer->OnThisHostDataReset();
+    }
+  }
+
   return result;
 }
 

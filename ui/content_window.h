@@ -27,6 +27,8 @@ class ContentWindow : public QMainWindow {
   HostClipboardView* GetHostView(uint32_t index);
   size_t HostsCount() const;
 
+  void closeEvent(QCloseEvent* event) override;
+
  private slots:
   void HostItemClicked(uint32_t element_index);
 

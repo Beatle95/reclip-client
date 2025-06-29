@@ -7,21 +7,34 @@
 #include "base/log.h"
 #include "ui/host_clipboard_view.h"
 
+import base.preferences;
+
 constexpr QSize kMinSize(320, 480);
+constexpr std::string_view kHeightPref = "ui.remembered_height";
+constexpr std::string_view kWidthPref = "ui.remembered_width";
 
 namespace reclip {
 
 ContentWindow::~ContentWindow() = default;
 
 ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
+  auto& prefs = Preferences::GetInstance();
+  prefs.RegisterInt(kHeightPref, kMinSize.height());
+  prefs.RegisterInt(kWidthPref, kMinSize.width());
+
   auto* scroll = new QScrollArea(this);
   main_widget_ = new QWidget;
   scroll->setWidgetResizable(true);
   scroll->setWidget(main_widget_);
   main_widget_->setLayout(new QHBoxLayout);
 
+  setObjectName("ContentWindow");
   setCentralWidget(scroll);
   setMinimumSize(kMinSize);
+  if (const QSize saved_size(prefs.GetInt(kWidthPref), prefs.GetInt(kHeightPref));
+      saved_size.isValid()) {
+    setBaseSize(saved_size);
+  }
   show();
 }
 
@@ -37,8 +50,7 @@ HostClipboardView* ContentWindow::AddHostView(const QString& name) {
 
   auto view = std::make_unique<HostClipboardView>(name);
   layout->addWidget(view.get());
-  connect(view.get(), &HostClipboardView::ElementClicked, this,
-          &ContentWindow::HostItemClicked);
+  connect(view.get(), &HostClipboardView::ElementClicked, this, &ContentWindow::HostItemClicked);
   host_views_.push_back(std::move(view));
   return host_views_.back().get();
 }
@@ -50,8 +62,13 @@ HostClipboardView* ContentWindow::GetHostView(uint32_t index) {
   return host_views_[index].get();
 }
 
-size_t ContentWindow::HostsCount() const {
-  return host_views_.size();
+size_t ContentWindow::HostsCount() const { return host_views_.size(); }
+
+void ContentWindow::closeEvent(QCloseEvent*) {
+  const auto cur_size = size();
+  auto& prefs = Preferences::GetInstance();
+  prefs.SetInt(kHeightPref, cur_size.height());
+  prefs.SetInt(kWidthPref, cur_size.width());  
 }
 
 void ContentWindow::HostItemClicked(uint32_t element_index) {

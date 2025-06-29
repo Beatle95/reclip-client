@@ -8,11 +8,14 @@
 namespace reclip {
 
 HostClipboardView::HostClipboardView(const QString& visible_name) {
+  setObjectName("HostClipboardView");
   auto* layout = new QVBoxLayout;
   layout->setAlignment(Qt::AlignTop);
 
   name_ = new QLabel(visible_name, this);
   name_->setAlignment(Qt::AlignHCenter);
+  name_->setObjectName("HostName");
+
   layout->addWidget(name_);
   content_ = new QWidget(this);
   layout->addWidget(content_);

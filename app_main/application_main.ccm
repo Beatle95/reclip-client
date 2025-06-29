@@ -4,6 +4,7 @@ module;
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDir>
+#include <QFile>
 #include <QStandardPaths>
 #include <QTimer>
 #include <cassert>
@@ -11,7 +12,6 @@ module;
 #include <memory>
 #include <stdexcept>
 
-#include "base/log.h"
 #include "core/clipboard.h"
 
 export module app_main.application_main;
@@ -19,6 +19,7 @@ export module app_main.application_main;
 import base.constants;
 import base.observer_helper;
 import base.preferences;
+import base.log;
 import core.clipboard_model;
 import communication.connection_info_provider;
 import communication.communication_manager;
@@ -42,6 +43,7 @@ export class ApplicationMain : public QApplication {
   InitArguments ParseArgs();
   void InitAppData(const QString& user_overriden_data_dir);
   void PrefInit();
+  void LoadStyleSheet();
 
   QDir app_data_dir_;
 
@@ -56,7 +58,7 @@ export class ApplicationMain : public QApplication {
 
 ApplicationMain::ApplicationMain(int argc, char** argv)
     : QApplication(argc, argv) {
-  DLOG(INFO) << "Application::Ctor";
+  DLogInfo("Application::Ctor");
   setApplicationName(QString::fromUtf8(kAppName.data(), kAppName.size()));
   setApplicationVersion(QStringLiteral("0.0.1"));
 
@@ -65,6 +67,8 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
   Preferences::Init((app_data_dir_.absolutePath() + "/preferences.json").toStdString());
   auto conn_info_provider = ConnectionInfoProvider::Create(
       (app_data_dir_.absolutePath() + "/server_config.json").toStdString());
+  
+  LoadStyleSheet();
 
   model_ = std::make_unique<ClipboardModel>();
   clipboard_ = Clipboard::Create();
@@ -83,7 +87,7 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
 }
 
 ApplicationMain::~ApplicationMain() {
-  DLOG(INFO) << "Application::Dtor";
+  DLogInfo("Application::Dtor");
   clipboard_->Stop();
 }
 
@@ -115,7 +119,17 @@ void ApplicationMain::InitAppData(const QString& user_overriden_data_dir) {
     throw std::runtime_error(std::format("Failed to create user data directory: '{}'",
                                          app_data_dir_.absolutePath().toStdString()));
   }
-  DLOG(INFO) << "User data directory: " << app_data_dir_.absolutePath().toStdString();
+  DLogInfo("User data directory: {}", app_data_dir_.absolutePath().toStdString());
+}
+
+void ApplicationMain::LoadStyleSheet() {
+  QFile file(applicationDirPath() + "/style.qss");
+  if (!file.open(QIODeviceBase::ReadOnly)) {
+    LogWarning("Unable to open application stylesheet file: {}",
+               (applicationDirPath() + "/style.qss").toStdString());
+    return;
+  }
+  setStyleSheet(file.readAll());
 }
 
 }  // namespace reclip

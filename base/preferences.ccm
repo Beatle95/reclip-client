@@ -23,6 +23,9 @@ export class Preferences {
   Preferences(Preferences&&) = delete;
   Preferences& operator=(Preferences&&) = delete;
 
+  void RegisterString(std::string_view key, std::string_view default_value);
+  void RegisterInt(std::string_view key, int64_t default_value);
+
   void SetString(std::string_view key, std::string_view value);
   void SetInt(std::string_view key, int64_t value);
 
@@ -72,6 +75,34 @@ Preferences& Preferences::GetInstance() {
 Preferences& Preferences::GetInstanceImpl() {
   static Preferences instance;
   return instance;
+}
+
+void Preferences::RegisterString(std::string_view key, std::string_view default_value) {
+  string_prefs_.emplace(key, default_value);
+}
+
+void Preferences::RegisterInt(std::string_view key, int64_t default_value) {
+  int_prefs_.emplace(key, default_value);
+}
+
+void Preferences::SetString(std::string_view key, std::string_view value) {
+  assert(string_prefs_.contains(std::string{key}));
+  string_prefs_[std::string{key}] = value;
+}
+
+void Preferences::SetInt(std::string_view key, int64_t value) {
+  assert(int_prefs_.contains(std::string{key}));
+  int_prefs_[std::string{key}] = value;
+}
+
+std::string_view Preferences::GetString(std::string_view key) const {
+  assert(string_prefs_.contains(std::string{key}));
+  return string_prefs_.at(std::string{key});
+}
+
+int64_t Preferences::GetInt(std::string_view key) const {
+  assert(int_prefs_.contains(std::string{key}));
+  return int_prefs_.at(std::string{key});
 }
 
 }  // namespace reclip

@@ -37,7 +37,7 @@ export class ClipboardController : public ClipboardModelObserver,
   ContentWindow* GetContentWindowForTests() const { return content_.get(); }
 
  private:
-  void PopulateData(const HostData& model_data, HostClipboardView& view);
+  void PopulateData(const HostData& model_data, HostClipboardView& view, bool this_device);
   void ShowHostsModelData();
   void OnTextPushedImpl(size_t index, const QString& text);
   void OnTextPopedImpl(size_t index);
@@ -50,6 +50,7 @@ export class ClipboardController : public ClipboardModelObserver,
 namespace {
 constexpr uint32_t kThisHostIndex = 0;
 constexpr uint32_t kThisHostOffset = 1;
+const auto kEmptyNameReplacement = QStringLiteral("Unknown");
 }
 
 ClipboardController::ClipboardController(ClipboardModel* model,
@@ -64,7 +65,7 @@ void ClipboardController::ShowUi() {
 
   auto* this_view = content_->AddHostView();
   assert(this_view);
-  PopulateData(model_->GetThisHostData(), *this_view);
+  PopulateData(model_->GetThisHostData(), *this_view, true);
 
   ShowHostsModelData();
 }
@@ -101,13 +102,13 @@ void ClipboardController::OnHostUpdated(size_t host_index) {
 
   auto* view = content_->GetHostView(kThisHostOffset + host_index);
   assert(view);
-  PopulateData(model_->GetHostData(host_index), *view);
+  PopulateData(model_->GetHostData(host_index), *view, host_index == kThisHostIndex);
 }
 
 void ClipboardController::OnThisHostDataReset() {
   auto* this_view = content_->GetHostView(kThisHostIndex);
   assert(this_view);
-  PopulateData(model_->GetThisHostData(), *this_view);
+  PopulateData(model_->GetThisHostData(), *this_view, true);
 }
 
 void ClipboardController::OnHostsDataReset() {
@@ -131,9 +132,14 @@ void ClipboardController::OnItemClicked(uint32_t host_index,
   clipboard_->WriteText(data->data.text[item_index]);
 }
 
-void ClipboardController::PopulateData(const HostData& model_data,
-                                       HostClipboardView& view) {
-  view.SetName(QString::fromStdString(model_data.name));
+void ClipboardController::PopulateData(const HostData& model_data, HostClipboardView& view,
+                                       bool this_device) {
+  auto name =
+      !model_data.name.empty() ? QString::fromStdString(model_data.name) : kEmptyNameReplacement;
+  if (this_device) {
+    name.append(" (Current Device)");
+  }
+  view.SetName(name);
   view.Clear();
   for (const auto& elem : model_data.data.text) {
     view.PushTop(QString::fromStdString(elem));
@@ -145,7 +151,7 @@ void ClipboardController::ShowHostsModelData() {
     auto& model_data = model_->GetHostData(i);
     auto* view = content_->AddHostView(QString::fromStdString(model_data.name));
     assert(view);
-    PopulateData(model_data, *view);
+    PopulateData(model_data, *view, false);
   }
 }
 
