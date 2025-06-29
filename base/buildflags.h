@@ -18,5 +18,11 @@
 #define IS_MAC_INTERNAL() (0)
 #endif
 
+#ifdef NDEBUG
+#define DLOG_ON_INTERNAL() (0)
+#else
+#define DLOG_ON_INTERNAL() (1)
+#endif
+
 #define BUILDFLAG_CAT(a, b) a ## b
 #define BUILDFLAG(flag) (BUILDFLAG_CAT(flag, _INTERNAL)())

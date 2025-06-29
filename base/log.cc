@@ -30,7 +30,7 @@ Log::Log(Severity severity) {
   stream_ << QDateTime::currentDateTime()
                  .toString(QStringLiteral("yyyy.MM.dd hh:mm:ss.zzz "))
                  .toStdString()
-          << SeverityToStr(severity) << " ";
+          << '[' << SeverityToStr(severity) << "] ";
 }
 
 Log::~Log() {

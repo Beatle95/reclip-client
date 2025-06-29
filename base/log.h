@@ -1,10 +1,18 @@
 #pragma once
+#include <format>
+#include <print>
 #include <sstream>
 
+#include "base/buildflags.h"
+
+// DEPRECATED: Use module version instead.
 #define LOG(severity) reclip::Log(reclip::Severity::_##severity)
-#ifdef NDEBUG
+
+#if BUILDFLAG(DLOG_ON)
+// DEPRECATED: Use module version instead.
 #define DLOG(severity) NoOpLog()
 #else
+// DEPRECATED: Use module version instead.
 #define DLOG(severity) reclip::Log(reclip::Severity::_##severity)
 #endif
 

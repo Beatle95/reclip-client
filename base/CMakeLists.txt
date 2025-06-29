@@ -15,6 +15,7 @@ target_sources(
     observer.ccm
     observers_list.ccm
     scoped_observation.ccm
+    log.ccm
 )
 
 target_sources(
