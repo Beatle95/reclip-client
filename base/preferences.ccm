@@ -2,20 +2,24 @@ module;
 
 #include <QFile>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <cassert>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 
 export module base.preferences;
 
+import base.log;
+
 namespace reclip {
 
 export class Preferences {
  public:
   static void Init(std::string_view prefs_path);
-  static void StorePrefs(std::string_view prefs_path);
+  static void Store(std::string_view prefs_path);
   static Preferences& GetInstance();
 
   Preferences(const Preferences&) = delete;
@@ -34,6 +38,8 @@ export class Preferences {
 
  private:
   static Preferences& GetInstanceImpl();
+  void InitImpl(std::string_view prefs_path);
+  void StoreImpl(std::string_view prefs_path);
   Preferences() = default;
 
   std::unordered_map<std::string, std::string> string_prefs_;
@@ -41,37 +47,96 @@ export class Preferences {
   bool initialized_ = false;
 };
 
-void Preferences::Init(std::string_view prefs_path) {
-  auto& instance = GetInstanceImpl();
-  assert(!instance.initialized_);
-  
+namespace {
+const auto kStringPrefs = QStringLiteral("string_prefs");
+const auto kIntPrefs = QStringLiteral("int_prefs");
+}  // namespace
+
+// static
+void Preferences::Init(std::string_view prefs_path) { GetInstanceImpl().InitImpl(prefs_path); }
+
+void Preferences::InitImpl(std::string_view prefs_path) {
+  assert(!initialized_);
+
   const auto path = QString::fromUtf8(prefs_path.data(), prefs_path.size());
   QFile file(path);
-  if (!file.open(QIODevice::ReadOnly)) {
+  if (!file.open(QIODevice::ReadWrite)) {
     throw std::runtime_error("Failed to open preferences file");
   }
 
   const auto json = QJsonDocument::fromJson(file.readAll());
-  if (json.isNull()) {
-    throw std::runtime_error("Failed to parse preferences file");
+  if (json.isNull() || !json.isObject()) {
+    // Empty prefs file, nothing to load.
+    return;
   }
 
-  // TODO: Load prefs.
+  auto root = json.object();
+  if (root.contains(kStringPrefs)) {
+    auto string_prefs = root[kStringPrefs];
+    if (!string_prefs.isObject()) {
+      throw std::runtime_error("Wrong format of string prefs");
+    }
+    const auto string_prefs_object = string_prefs.toObject();
+    for (auto it = string_prefs_object.constBegin(); it != string_prefs_object.constEnd(); ++it) {
+      string_prefs_[it.key().toStdString()] = it->toString().toStdString();
+    }
+  }
 
-  instance.initialized_ = true;
+  if (root.contains(kIntPrefs)) {
+    auto int_prefs = root[kIntPrefs];
+    if (!int_prefs.isObject()) {
+      throw std::runtime_error("Unable to initialize string prefs");
+    }
+    const auto int_prefs_object = int_prefs.toObject();
+    for (auto it = int_prefs_object.constBegin(); it != int_prefs_object.constEnd(); ++it) {
+      int_prefs_[it.key().toStdString()] = it->toInteger();
+    }
+  }
+
+  initialized_ = true;
 }
 
-void Preferences::StorePrefs(std::string_view prefs_path) {
-  // TODO: Store prefs.
-  assert(false);
-  (void) prefs_path;
+// static
+void Preferences::Store(std::string_view prefs_path) { GetInstanceImpl().StoreImpl(prefs_path); }
+
+void Preferences::StoreImpl(std::string_view prefs_path) {
+  if (!initialized_) {
+    return;
+  }
+  const auto path = QString::fromUtf8(prefs_path.data(), prefs_path.size());
+  QFile file(path);
+  if (!file.open(QIODevice::ReadWrite)) {
+    LogError("Failed to open preferences file {}", prefs_path);
+    return;
+  }
+
+  QJsonObject string_prefs_obj;
+  for (const auto& [key, value] : string_prefs_) {
+    string_prefs_obj[QString::fromStdString(key)] = QString::fromStdString(value);
+  }
+
+  QJsonObject int_prefs_obj;
+  for (const auto& [key, value] : int_prefs_) {
+    int_prefs_obj[QString::fromStdString(key)] = value;
+  }
+
+  QJsonObject root;
+  root[kStringPrefs] = string_prefs_obj;
+  root[kIntPrefs] = int_prefs_obj;
+  file.write(QJsonDocument(root).toJson());
+
+  string_prefs_.clear();
+  int_prefs_.clear();
+  initialized_ = false;
 }
 
+// static
 Preferences& Preferences::GetInstance() {
   assert(GetInstanceImpl().initialized_);
   return GetInstanceImpl();
 }
 
+// static
 Preferences& Preferences::GetInstanceImpl() {
   static Preferences instance;
   return instance;

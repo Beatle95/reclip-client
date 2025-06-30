@@ -2,9 +2,9 @@
 
 #include <QBoxLayout>
 #include <QScrollArea>
+#include <QStyle>
 #include <cassert>
 
-#include "base/log.h"
 #include "ui/host_clipboard_view.h"
 
 import base.preferences;
@@ -14,6 +14,8 @@ constexpr std::string_view kHeightPref = "ui.remembered_height";
 constexpr std::string_view kWidthPref = "ui.remembered_width";
 
 namespace reclip {
+
+// TODO: Center on screen when shown.
 
 ContentWindow::~ContentWindow() = default;
 
@@ -33,7 +35,7 @@ ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
   setMinimumSize(kMinSize);
   if (const QSize saved_size(prefs.GetInt(kWidthPref), prefs.GetInt(kHeightPref));
       saved_size.isValid()) {
-    setBaseSize(saved_size);
+    setGeometry(QRect(geometry().topLeft(), saved_size));
   }
   show();
 }

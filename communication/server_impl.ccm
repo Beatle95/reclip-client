@@ -160,7 +160,7 @@ void ServerImpl::DisconnectTimeout() {
 }
 
 void ServerImpl::ConnectImpl() {
-  LOG(INFO) << "Connecting to server\n";
+  LOG(INFO) << "Connecting to server";
   reconnect_timer_.setInterval(g_test_helper ? g_test_helper->GetReconnectDuration() : 3s);
   state_ = ConnectionState::kConnecting;
   connection_->Connect();
