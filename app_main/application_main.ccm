@@ -124,10 +124,10 @@ void ApplicationMain::InitAppData(const QString& user_overriden_data_dir) {
 }
 
 void ApplicationMain::LoadStyleSheet() {
-  QFile file(applicationDirPath() + "/style.qss");
+  QFile file(applicationDirPath() + "/dark.qss");
   if (!file.open(QIODeviceBase::ReadOnly)) {
     LogWarning("Unable to open application stylesheet file: {}",
-               (applicationDirPath() + "/style.qss").toStdString());
+               (applicationDirPath() + "/dark.qss").toStdString());
     return;
   }
   setStyleSheet(file.readAll());

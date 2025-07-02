@@ -11,6 +11,6 @@ endif()
 add_custom_command(
     TARGET deploy_resources POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_CURRENT_SOURCE_DIR}/style.qss
-    ${actual_app_path}/style.qss
+    ${CMAKE_CURRENT_SOURCE_DIR}/dark.qss
+    ${actual_app_path}/dark.qss
 )
