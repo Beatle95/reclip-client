@@ -2,13 +2,19 @@
 
 #include <QBoxLayout>
 #include <QLabel>
+#include <QScrollArea>
 
 #include "ui/text_view.h"
+
+constexpr int kMinWidth = 320;
 
 namespace reclip {
 
 HostClipboardView::HostClipboardView(const QString& visible_name) {
+  setAttribute(Qt::WidgetAttribute::WA_StyledBackground);
   setObjectName("HostClipboardView");
+  setMinimumWidth(kMinWidth);
+
   auto* layout = new QVBoxLayout;
   layout->setAlignment(Qt::AlignTop);
 
@@ -18,14 +24,15 @@ HostClipboardView::HostClipboardView(const QString& visible_name) {
 
   layout->addWidget(name_);
   content_ = new QWidget(this);
-  layout->addWidget(content_);
+  auto* scroll = new QScrollArea(this);
+  scroll->setWidgetResizable(true);
+  scroll->setWidget(content_);
+  layout->addWidget(scroll);
 
   auto* content_layout = new QVBoxLayout;
   content_layout->setDirection(QBoxLayout::BottomToTop);
   content_layout->setAlignment(Qt::AlignTop);
   content_->setLayout(content_layout);
-
-  setFixedWidth(300);
   setLayout(layout);
 }
 

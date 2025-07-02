@@ -3,7 +3,6 @@
 #include <QWidget>
 
 class QLabel;
-class QWidget;
 
 namespace reclip {
 

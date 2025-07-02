@@ -24,19 +24,21 @@ ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
   prefs.RegisterInt(kHeightPref, kMinSize.height());
   prefs.RegisterInt(kWidthPref, kMinSize.width());
 
-  auto* scroll = new QScrollArea(this);
-  main_widget_ = new QWidget;
-  scroll->setWidgetResizable(true);
-  scroll->setWidget(main_widget_);
-  main_widget_->setLayout(new QHBoxLayout);
-
-  setObjectName("ContentWindow");
-  setCentralWidget(scroll);
   setMinimumSize(kMinSize);
   if (const QSize saved_size(prefs.GetInt(kWidthPref), prefs.GetInt(kHeightPref));
       saved_size.isValid()) {
     setGeometry(QRect(geometry().topLeft(), saved_size));
   }
+
+  auto* scroll = new QScrollArea(this);
+  main_widget_ = new QWidget;
+  main_widget_->setObjectName("ContentWindowWidget");
+  scroll->setWidgetResizable(true);
+  scroll->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
+  scroll->setWidget(main_widget_);
+  main_widget_->setLayout(new QHBoxLayout);
+
+  setCentralWidget(scroll);
   show();
 }
 
@@ -70,7 +72,7 @@ void ContentWindow::closeEvent(QCloseEvent*) {
   const auto cur_size = size();
   auto& prefs = Preferences::GetInstance();
   prefs.SetInt(kHeightPref, cur_size.height());
-  prefs.SetInt(kWidthPref, cur_size.width());  
+  prefs.SetInt(kWidthPref, cur_size.width());
 }
 
 void ContentWindow::HostItemClicked(uint32_t element_index) {
