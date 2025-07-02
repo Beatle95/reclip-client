@@ -16,10 +16,24 @@ import base.log;
 
 namespace reclip {
 
+export class MockPreferencesGuard {
+ public:
+  ~MockPreferencesGuard();
+  MockPreferencesGuard(const MockPreferencesGuard&) = delete;
+  MockPreferencesGuard(MockPreferencesGuard&&) = delete;
+  MockPreferencesGuard& operator=(const MockPreferencesGuard&) = delete;
+  MockPreferencesGuard& operator=(MockPreferencesGuard&&) = delete;
+
+ private:
+  friend class Preferences;
+
+  MockPreferencesGuard();
+};
+
 export class Preferences {
  public:
   static void Init(std::string_view prefs_path);
-  static void Store(std::string_view prefs_path);
+  static void Deinit(std::string_view prefs_path);
   static Preferences& GetInstance();
 
   Preferences(const Preferences&) = delete;
@@ -36,11 +50,17 @@ export class Preferences {
   std::string_view GetString(std::string_view key) const;
   int64_t GetInt(std::string_view key) const;
 
+  static MockPreferencesGuard InitForTesting();
+
  private:
+  friend class MockPreferencesGuard;
+
   static Preferences& GetInstanceImpl();
-  void InitImpl(std::string_view prefs_path);
-  void StoreImpl(std::string_view prefs_path);
   Preferences() = default;
+
+  void Load(std::string_view prefs_path);
+  void Store(std::string_view prefs_path);
+  void Clear();
 
   std::unordered_map<std::string, std::string> string_prefs_;
   std::unordered_map<std::string, int64_t> int_prefs_;
@@ -53,9 +73,9 @@ const auto kIntPrefs = QStringLiteral("int_prefs");
 }  // namespace
 
 // static
-void Preferences::Init(std::string_view prefs_path) { GetInstanceImpl().InitImpl(prefs_path); }
+void Preferences::Init(std::string_view prefs_path) { GetInstanceImpl().Load(prefs_path); }
 
-void Preferences::InitImpl(std::string_view prefs_path) {
+void Preferences::Load(std::string_view prefs_path) {
   assert(!initialized_);
 
   const auto path = QString::fromUtf8(prefs_path.data(), prefs_path.size());
@@ -97,9 +117,12 @@ void Preferences::InitImpl(std::string_view prefs_path) {
 }
 
 // static
-void Preferences::Store(std::string_view prefs_path) { GetInstanceImpl().StoreImpl(prefs_path); }
+void Preferences::Deinit(std::string_view prefs_path) {
+  GetInstanceImpl().Store(prefs_path);
+  GetInstanceImpl().Clear();
+}
 
-void Preferences::StoreImpl(std::string_view prefs_path) {
+void Preferences::Store(std::string_view prefs_path) {
   if (!initialized_) {
     return;
   }
@@ -124,7 +147,9 @@ void Preferences::StoreImpl(std::string_view prefs_path) {
   root[kStringPrefs] = string_prefs_obj;
   root[kIntPrefs] = int_prefs_obj;
   file.write(QJsonDocument(root).toJson());
+}
 
+void Preferences::Clear() {
   string_prefs_.clear();
   int_prefs_.clear();
   initialized_ = false;
@@ -168,6 +193,16 @@ std::string_view Preferences::GetString(std::string_view key) const {
 int64_t Preferences::GetInt(std::string_view key) const {
   assert(int_prefs_.contains(std::string{key}));
   return int_prefs_.at(std::string{key});
+}
+
+// static
+MockPreferencesGuard Preferences::InitForTesting() { return MockPreferencesGuard{}; }
+
+MockPreferencesGuard::MockPreferencesGuard() { Preferences::GetInstanceImpl().initialized_ = true; }
+
+MockPreferencesGuard::~MockPreferencesGuard() {
+  // Deinit will reset initialized_ to false.
+  Preferences::GetInstanceImpl().Clear();
 }
 
 }  // namespace reclip

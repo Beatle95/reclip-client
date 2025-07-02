@@ -6,6 +6,7 @@
 #include "core/clipboard.h"
 #include "ui/host_clipboard_view.h"
 
+import base.preferences;
 import core.clipboard_model;
 import core.host_types;
 import ui.clipboard_controller;
@@ -29,6 +30,7 @@ class ModelControllerIntegrationTest : public ::testing::Test {
  public:
   ModelControllerIntegrationTest()
       : app_(argc, argv),
+        preferences_guard_(Preferences::InitForTesting()),
         model_(std::make_unique<ClipboardModel>()),
         controller_(std::make_unique<ClipboardController>(model_.get(), &mock_clipboard_)) {
     model_->AddObserver(controller_.get());
@@ -42,6 +44,7 @@ class ModelControllerIntegrationTest : public ::testing::Test {
 
  private:
   QApplication app_;
+  MockPreferencesGuard preferences_guard_;
   MockClipboard mock_clipboard_;
   std::unique_ptr<ClipboardModel> model_;
   std::unique_ptr<ClipboardController> controller_;

@@ -89,7 +89,7 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
 ApplicationMain::~ApplicationMain() {
   DLogInfo("Application::Dtor");
   clipboard_->Stop();
-  Preferences::Store((app_data_dir_.absolutePath() + "/preferences.json").toStdString());
+  Preferences::Deinit((app_data_dir_.absolutePath() + "/preferences.json").toStdString());
 }
 
 InitArguments ApplicationMain::ParseArgs() {

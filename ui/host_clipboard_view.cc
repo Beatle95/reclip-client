@@ -70,7 +70,7 @@ void HostClipboardView::ItemClicked() {
   auto* layout = content_->layout();
   for (int i = 0; i < layout->count(); ++i) {
     if (layout->itemAt(i)->widget() == emitter) {
-      emit ElementClicked(static_cast<uint32_t>(layout->count() - i - 1));
+      emit ElementClicked(static_cast<uint32_t>(i));
       return;
     }
   }
