@@ -10,10 +10,10 @@
 
 #if BUILDFLAG(DLOG_ON)
 // DEPRECATED: Use module version instead.
-#define DLOG(severity) NoOpLog()
+#define DLOG(severity) reclip::Log(reclip::Severity::_##severity)
 #else
 // DEPRECATED: Use module version instead.
-#define DLOG(severity) reclip::Log(reclip::Severity::_##severity)
+#define DLOG(severity) NoOpLog()
 #endif
 
 class QString;
