@@ -1,6 +1,7 @@
 #include "ui/content_window.h"
 
 #include <QBoxLayout>
+#include <QScreen>
 #include <QScrollArea>
 #include <QStyle>
 #include <cassert>
@@ -15,20 +16,12 @@ constexpr std::string_view kWidthPref = "ui.remembered_width";
 
 namespace reclip {
 
-// TODO: Center on screen when shown.
-
 ContentWindow::~ContentWindow() = default;
 
 ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
   auto& prefs = Preferences::GetInstance();
   prefs.RegisterInt(kHeightPref, kMinSize.height());
   prefs.RegisterInt(kWidthPref, kMinSize.width());
-
-  setMinimumSize(kMinSize);
-  if (const QSize saved_size(prefs.GetInt(kWidthPref), prefs.GetInt(kHeightPref));
-      saved_size.isValid()) {
-    setGeometry(QRect(geometry().topLeft(), saved_size));
-  }
 
   auto* scroll = new QScrollArea(this);
   main_widget_ = new QWidget;
@@ -38,6 +31,7 @@ ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
   scroll->setWidget(main_widget_);
   main_widget_->setLayout(new QHBoxLayout);
 
+  setMinimumSize(kMinSize);
   setCentralWidget(scroll);
   show();
 }
@@ -67,6 +61,31 @@ HostClipboardView* ContentWindow::GetHostView(uint32_t index) {
 }
 
 size_t ContentWindow::HostsCount() const { return host_views_.size(); }
+
+void ContentWindow::showEvent(QShowEvent*) {
+  // Center on screen when shown and try to keep the size of the window.
+  auto& prefs = Preferences::GetInstance();
+  QRect target_rect = geometry();
+  if (const QSize saved_size(prefs.GetInt(kWidthPref), prefs.GetInt(kHeightPref));
+      saved_size.isValid()) {
+      target_rect.setSize(saved_size);
+  }
+
+  auto* current_screen = screen();
+  assert(current_screen);
+  if (current_screen) {
+    if (current_screen->geometry().size().width() > target_rect.size().width() &&
+        current_screen->geometry().size().height() > target_rect.size().height()) {
+      // Center the window on the screen.
+      target_rect.moveCenter(current_screen->geometry().center());
+    } else {
+      // There is not enough space to fit the window, just maximize it.
+      target_rect = current_screen->geometry();
+    }
+  }
+
+  setGeometry(target_rect);
+}
 
 void ContentWindow::closeEvent(QCloseEvent*) {
   const auto cur_size = size();
