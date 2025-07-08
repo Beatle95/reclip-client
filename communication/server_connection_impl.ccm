@@ -2,7 +2,7 @@ module;
 
 #include <QByteArray>
 #include <QObject>
-#include <QTcpSocket>
+#include <QSslSocket>
 #include <cassert>
 #include <cstdint>
 #include <span>
@@ -33,21 +33,25 @@ export class ServerConnectionImpl : public QObject, public ServerConnection {
 
  private:
   void OnConnected();
+  void OnEncrypted();
   void OnDisconnected();
-  void OnReadyRead();
   void OnError(QAbstractSocket::SocketError err);
+  void OnSslError(const QList<QSslError>& errors);
+  void OnReadyRead();
 
  private:
+  enum class State { kDisconnected, kConnected, kEncrypted };
+
   QString ip_;
   quint16 port_;
 
+  QSslSocket socket_;
   MessageReassembler reassembler_;
-  QTcpSocket socket_;
   ServerConnection::Delegate* delegate_;
 
   // This field will help us to distinguish between errors upon connection and
   // errors upon communication process.
-  bool connected_ = false;
+  State state_ = State::kDisconnected;
 };
 
 namespace {
@@ -89,24 +93,40 @@ bool ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
 ServerConnectionImpl::ServerConnectionImpl(ServerConnection::Delegate& delegate, const QString& ip,
                                            quint16 port)
     : ip_(ip), port_(port), delegate_(&delegate) {
-  connect(&socket_, &QTcpSocket::connected, this, &ServerConnectionImpl::OnConnected);
-  connect(&socket_, &QTcpSocket::disconnected, this, &ServerConnectionImpl::OnDisconnected);
-  connect(&socket_, &QTcpSocket::errorOccurred, this, &ServerConnectionImpl::OnError);
-  connect(&socket_, &QTcpSocket::readyRead, this, &ServerConnectionImpl::OnReadyRead);
+  socket_.setProtocol(QSsl::SslProtocol::TlsV1_2OrLater);
+
+  // TODO: Probably we still will have to add self-signed certs here.
+  // auto serverCerts = QSslCertificate::fromPath("/app_data/cert.pem");
+  // if (!serverCerts.empty()) {
+  //   LOG(INFO) << "Server certificate is added from app data";
+  //   auto conf = QSslConfiguration{};
+  //   conf.addCaCertificates(serverCerts);
+  //   socket_.setSslConfiguration(conf);
+  // }
+  // There was a problem observed on macOS, if 'securetransport' backend is used, we can't establish
+  // connection even we add server cert via addCaCertificates. To fix that we have to ignore
+  // Untrusted certificate error or set certifiacate in the system.
+
+  connect(&socket_, &QSslSocket::connected, this, &ServerConnectionImpl::OnConnected);
+  connect(&socket_, &QSslSocket::encrypted, this, &ServerConnectionImpl::OnEncrypted);
+  connect(&socket_, &QSslSocket::disconnected, this, &ServerConnectionImpl::OnDisconnected);
+  connect(&socket_, &QSslSocket::errorOccurred, this, &ServerConnectionImpl::OnError);
+  connect(&socket_, &QSslSocket::sslErrors, this, &ServerConnectionImpl::OnSslError);
+  connect(&socket_, &QSslSocket::readyRead, this, &ServerConnectionImpl::OnReadyRead);
 }
 
 ServerConnectionImpl::~ServerConnectionImpl() { socket_.disconnect(); }
 
 void ServerConnectionImpl::Connect() {
-  assert(!connected_);
-  socket_.connectToHost(QHostAddress(ip_), port_);
+  assert(state_ == State::kDisconnected);
+  socket_.connectToHostEncrypted(ip_, port_);
 }
 
 void ServerConnectionImpl::Disconnect() { socket_.disconnectFromHost(); }
 
 bool ServerConnectionImpl::SendMessage(uint64_t id, ClientMessageType type,
                                        const QByteArray& data) {
-  if (!connected_) {
+  if (state_ == State::kDisconnected) {
     assert(false && "Sending via disconnected connection");
     return false;
   }
@@ -132,14 +152,42 @@ bool ServerConnectionImpl::SendMessage(uint64_t id, ClientMessageType type,
 }
 
 void ServerConnectionImpl::OnConnected() {
-  connected_ = true;
+  state_ = State::kConnected;
+}
+
+void ServerConnectionImpl::OnEncrypted() {
+  state_ = State::kEncrypted;
   reassembler_.Clear();
   delegate_->HandleConnected(true);
 }
 
 void ServerConnectionImpl::OnDisconnected() {
-  connected_ = false;
-  delegate_->HandleDisconnected();
+  // For our delegate we want to hide encryption, for it only encrypted state will be treated as
+  // connected.
+  if (state_ == State::kEncrypted) {
+    delegate_->HandleDisconnected();
+  } else {
+    delegate_->HandleConnected(false);
+  }
+  state_ = State::kDisconnected;
+}
+
+void ServerConnectionImpl::OnError(QAbstractSocket::SocketError err) {
+  LOG(ERROR) << "ServerConnection connection error occured: " << err;
+  if (state_ == State::kDisconnected) {
+    delegate_->HandleConnected(false);
+  }
+}
+
+void ServerConnectionImpl::OnSslError(const QList<QSslError>& errors) {
+  QString error_str;
+  for (const auto& entry : errors) {
+    if (!error_str.isEmpty()) {
+      error_str.append("; ");
+    }
+    error_str.append(entry.errorString() + "; ");
+  }
+  LOG(ERROR) << "SSL errors: " << (!error_str.isEmpty() ? error_str : QString("unspecified error"));
 }
 
 void ServerConnectionImpl::OnReadyRead() {
@@ -168,14 +216,6 @@ void ServerConnectionImpl::OnReadyRead() {
     } else {
       LOG(ERROR) << "Unable to parse network header (size was: " << msg.size() << ")";
     }
-  }
-}
-
-void ServerConnectionImpl::OnError(QAbstractSocket::SocketError err) {
-  if (connected_) {
-    LOG(ERROR) << "ServerConnection error occured: " << err;
-  } else {
-    delegate_->HandleConnected(false);
   }
 }
 
