@@ -182,8 +182,12 @@ void ServerImpl::SendIntroduction() {
   assert(state_ == ConnectionState::kConnecting);
   state_ = ConnectionState::kIntroducing;
   const auto msg_id = GenerateId();
-  const auto serialized_data =
-      SerializeIntroduction(delegate_->GetConnectionInfoProvider().GetSecret());
+
+  const auto& secret = delegate_->GetConnectionInfoProvider().GetSecret();
+  assert(!secret.IsNull());
+  auto ser_secret = secret.GetBinary();
+  QByteArray serialized_data(reinterpret_cast<const char*>(ser_secret.data()), ser_secret.size());
+
   if (!connection_->SendMessage(msg_id, ClientMessageType::kIntroduction, serialized_data)) {
     LOG(ERROR) << "Sending introduction error";
     connection_->Disconnect();

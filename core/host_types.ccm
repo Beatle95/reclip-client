@@ -1,19 +1,51 @@
 module;
 
 #include <cassert>
+#include <compare>
 #include <cstdint>
 #include <deque>
 #include <format>
 #include <ostream>
+#include <span>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 export module core.host_types;
 
 export namespace reclip {
 
-using HostSecretId = std::string;
 using ClipboardTextContainer = std::deque<std::string>;
+
+// Incapsulates host secret ID. The size of a signature in all constructors is expected to be equal
+// to kSecretSize, any other value is considered invalid (exception will be thrown).
+class HostSecretId {
+ public:
+  static constexpr size_t kSecretSize = 512 / 8;
+
+  // Creates simple secret idntified by num.
+  static HostSecretId CreateForTesting(uint8_t num);
+
+  HostSecretId() = default;
+  explicit HostSecretId(std::span<const uint8_t> signature)
+      : signature_(signature.begin(), signature.end()) {
+    if (signature.size() != kSecretSize) {
+      throw std::runtime_error(std::format("Invalid secret size: {}", signature.size()));
+    }
+  }
+  explicit HostSecretId(std::span<const char> signature)
+      : HostSecretId(
+            std::span(reinterpret_cast<const uint8_t*>(signature.data()), signature.size())) {}
+
+  bool IsNull() const { return signature_.empty(); }
+  std::span<const uint8_t> GetBinary() const { return signature_; }
+
+ private:
+  friend std::strong_ordering operator<=>(const HostSecretId& lhs, const HostSecretId rhs);
+
+  std::vector<uint8_t> signature_;
+};
 
 class HostPublicId {
  public:
@@ -47,6 +79,18 @@ struct HostData {
   std::string name;
   ClipboardData data;
 };
+
+// static
+HostSecretId HostSecretId::CreateForTesting(uint8_t num) {
+  HostSecretId result;
+  result.signature_.resize(kSecretSize);
+  result.signature_[0] = num;
+  return result;
+}
+
+std::strong_ordering operator<=>(const HostSecretId& lhs, const HostSecretId rhs) {
+  return lhs.signature_ <=> rhs.signature_;
+}
 
 constexpr HostPublicId operator""_pubid(unsigned long long id) { return HostPublicId(id); }
 

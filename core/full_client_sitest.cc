@@ -125,9 +125,9 @@ TEST_F(ClientsGroupIntegration, CoupleClientsCommunication) {
   ASSERT_TRUE(process.Start("simple_communication_test", TestConnInfoProvider::kTestPort));
 
   std::vector<TestClient> clients;
-  clients.emplace_back("secret1");
-  clients.emplace_back("secret2");
-  clients.emplace_back("secret3");
+  clients.emplace_back(HostSecretId::CreateForTesting(1));
+  clients.emplace_back(HostSecretId::CreateForTesting(2));
+  clients.emplace_back(HostSecretId::CreateForTesting(3));
 
   ModelUpdatesWaiter waiter;
   std::for_each(clients.begin(), clients.end(),

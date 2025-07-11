@@ -65,7 +65,7 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
 class MockConnectionInfoProvider : public ConnectionInfoProvider {
  public:
   ~MockConnectionInfoProvider() override = default;
-  HostSecretId GetSecret() const override { return {}; };
+  HostSecretId GetSecret() const override { return HostSecretId::CreateForTesting(0); };
   const std::string& GetIp() const override {
     static constexpr std::string kEmptyString{};
     return kEmptyString;

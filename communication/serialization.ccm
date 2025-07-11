@@ -41,7 +41,6 @@ struct TextUpdateResponse {
   std::string text;
 };
 
-QByteArray SerializeIntroduction(const HostSecretId& id);
 QByteArray SerializeHostSyncRequest(HostPublicId id);
 QByteArray SerializeTextUpdate(const std::string& text);
 QByteArray SerializeHostSync(const HostData& data);
@@ -110,12 +109,6 @@ std::optional<HostData> ParseHost(const QJsonObject& obj) {
 SerializationTestHelper* g_test_helper = nullptr;
 
 }  // namespace
-
-QByteArray SerializeIntroduction(const HostSecretId& id) {
-  QJsonObject root;
-  root["ClientSecretKey"] = QString::fromStdString(id);
-  return QJsonDocument(root).toJson(QJsonDocument::Compact);
-}
 
 QByteArray SerializeHostSyncRequest(HostPublicId id) {
   QJsonObject root;

@@ -55,7 +55,11 @@ ConnectionInfoProviderImpl::ConnectionInfoProviderImpl(std::string_view config_p
   if (json.isNull()) {
     throw std::runtime_error("Failed to parse preferences file");
   }
-  host_secret_ = json["secret"].toString().toStdString();
+  const auto decoded = QByteArray::fromBase64(json["secret"].toString().toUtf8());
+  if (decoded.size() != HostSecretId::kSecretSize) {
+    throw std::runtime_error("Failed to load host's secret, it's size is incorrect");
+  }
+  host_secret_ = HostSecretId(std::span(decoded.data(), decoded.size()));
   server_ip_ = json["server_ip"].toString("127.0.0.1").toStdString();
   server_port_ = json["server_port"].toInt(kDefaultServerPort);
 }
