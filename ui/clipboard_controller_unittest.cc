@@ -57,14 +57,13 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   ASSERT_NE(window, nullptr);
   ASSERT_EQ(window->HostsCount(), 1);
 
-  EXPECT_TRUE(model().AdoptThisHostData("id", "name", {.text = {"text1", "text2"}}));
+  EXPECT_TRUE(model().AdoptThisHostData(0_pubid, "name", {.text = {"text1", "text2"}}));
   ASSERT_EQ(window->HostsCount(), 1);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
 
   model().ResetHostsData({
-      HostData{.id = "host_id1", .name = "host1", .data = ClipboardData{.text = {"text0"}}},
-      HostData{
-          .id = "host_id2", .name = "host2", .data = ClipboardData{.text = {"text1", "text2"}}},
+      HostData{.id = 1_pubid, .name = "host1", .data = ClipboardData{.text = {"text0"}}},
+      HostData{.id = 2_pubid, .name = "host2", .data = ClipboardData{.text = {"text1", "text2"}}},
   });
   ASSERT_EQ(window->HostsCount(), 3);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
@@ -74,18 +73,18 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   model().ResetHostsData({});
   ASSERT_EQ(window->HostsCount(), 1);
 
-  model().SetHostData(HostData{
-      .id = "host_id3", .name = "host", .data = ClipboardData{.text = {"text1", "text2"}}});
+  model().SetHostData(
+      HostData{.id = 3_pubid, .name = "host", .data = ClipboardData{.text = {"text1", "text2"}}});
   ASSERT_EQ(window->HostsCount(), 2u);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
   EXPECT_EQ(window->GetHostView(1)->GetTextItemsCount(), 2u);
 
-  EXPECT_TRUE(model().AddHostText("host_id3", "text3"));
+  EXPECT_TRUE(model().AddHostText(3_pubid, "text3"));
   ASSERT_EQ(window->HostsCount(), 2u);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
   EXPECT_EQ(window->GetHostView(1)->GetTextItemsCount(), 3u);
 
-  EXPECT_FALSE(model().AddHostText("host_unknown", "text3"));
+  EXPECT_FALSE(model().AddHostText(323_pubid, "text3"));
   ASSERT_EQ(window->HostsCount(), 2u);
   EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
   EXPECT_EQ(window->GetHostView(1)->GetTextItemsCount(), 3u);

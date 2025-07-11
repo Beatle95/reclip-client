@@ -33,22 +33,22 @@ class TestConnInfoProvider : public ConnectionInfoProvider {
   static constexpr std::string kTestIp = "127.0.0.1";
   static constexpr uint16_t kTestPort = 6783;
 
-  explicit TestConnInfoProvider(const HostSecret& secret) : secret_(secret) {}
+  explicit TestConnInfoProvider(const HostSecretId& secret) : secret_(secret) {}
   ~TestConnInfoProvider() override = default;
 
-  HostSecret GetSecret() const override { return secret_; }
+  HostSecretId GetSecret() const override { return secret_; }
 
   const std::string& GetIp() const override { return kTestIp; }
 
   uint16_t GetPort() const override { return kTestPort; }
 
  private:
-  HostSecret secret_;
+  HostSecretId secret_;
 };
 
 class TestClient {
  public:
-  explicit TestClient(HostSecret secret) {
+  explicit TestClient(HostSecretId secret) {
     model_ = std::make_unique<ClipboardModel>();
     communication_manager_ = std::make_unique<CommunicationManager>(
         *model_, std::make_unique<TestConnInfoProvider>(secret));
@@ -153,7 +153,7 @@ TEST_F(ClientsGroupIntegration, CoupleClientsCommunication) {
   for (uint32_t main_client = 0; main_client < clients.size(); ++main_client) {
     const auto& this_data = clients[main_client].GetModel().GetThisHostData();
     // This is set by server.
-    EXPECT_EQ(this_data.id, std::format("public{}", main_client + 1));
+    EXPECT_EQ(this_data.id, HostPublicId(main_client + 1));
     EXPECT_EQ(this_data.name, std::format("name{}", main_client + 1));
 
     EXPECT_EQ(this_data.data.text.size(), kClipboardSizeMax);
@@ -169,7 +169,7 @@ TEST_F(ClientsGroupIntegration, CoupleClientsCommunication) {
       }
       // Hosts position inside model is not defined, so we will find each expected element.
       const HostData* other_data =
-          clients[main_client].GetModel().GetHostData(std::format("public{}", client_counter + 1));
+          clients[main_client].GetModel().GetHostData(HostPublicId(client_counter + 1));
       ASSERT_NE(other_data, nullptr);
       EXPECT_EQ(other_data->name, std::format("name{}", client_counter + 1));
 

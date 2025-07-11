@@ -31,9 +31,9 @@ export class CommunicationManager : public ServerDelegate, public ClipboardModel
   // ServerDelegate overrides:
   ConnectionInfoProvider& GetConnectionInfoProvider() override;
   void OnFullSync(HostData, std::vector<HostData>) override;
-  void HostConnected(const HostId& id) override;
-  void HostDisconnected(const HostId& id) override;
-  void HostTextAdded(const HostId& id, const std::string& text) override;
+  void HostConnected(HostPublicId id) override;
+  void HostDisconnected(HostPublicId id) override;
+  void HostTextAdded(HostPublicId id, const std::string& text) override;
   void HostSynced(HostData data) override;
 
   // ClipboardModelObserver overrides:
@@ -81,18 +81,18 @@ void CommunicationManager::OnFullSync(HostData this_host_data, std::vector<HostD
   }
 }
 
-void CommunicationManager::HostConnected(const HostId& id) {
+void CommunicationManager::HostConnected(HostPublicId id) {
   if (!model_->IsHostExists(id)) {
     server_->RequestHostSync(id, std::bind(&CommunicationManager::OnHostSynced, this, _1));
   }
 }
 
-void CommunicationManager::HostDisconnected(const HostId& id) {
+void CommunicationManager::HostDisconnected(HostPublicId id) {
   (void)id;
   // Right now it is not used, but may be used to display state of the host.
 }
 
-void CommunicationManager::HostTextAdded(const HostId& id, const std::string& text) {
+void CommunicationManager::HostTextAdded(HostPublicId id, const std::string& text) {
   if (!model_->AddHostText(id, text)) {
     server_->RequestHostSync(id, std::bind(&CommunicationManager::OnHostSynced, this, _1));
   }

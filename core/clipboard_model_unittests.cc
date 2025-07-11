@@ -66,7 +66,7 @@ TEST_F(ClipboardModelTest, ThisHostTextUpdating) {
 }
 
 TEST_F(ClipboardModelTest, ProcessRemoteHostTextUpdate) {
-  constexpr HostId kNewHostId("new_host");
+  constexpr auto kNewHostId = 200_pubid;
   {
     EXPECT_TRUE(GetThisTextData().empty());
     EXPECT_EQ(model_->GetHostsCount(), 0);

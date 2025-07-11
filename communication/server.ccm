@@ -18,9 +18,9 @@ export class ServerDelegate {
   virtual ~ServerDelegate() = default;
   virtual ConnectionInfoProvider& GetConnectionInfoProvider() = 0;
   virtual void OnFullSync(HostData, std::vector<HostData>) = 0;
-  virtual void HostConnected(const HostId& id) = 0;
-  virtual void HostDisconnected(const HostId& id) = 0;
-  virtual void HostTextAdded(const HostId& id, const std::string& text) = 0;
+  virtual void HostConnected(HostPublicId id) = 0;
+  virtual void HostDisconnected(HostPublicId id) = 0;
+  virtual void HostTextAdded(HostPublicId id, const std::string& text) = 0;
   virtual void HostSynced(HostData data) = 0;
 };
 
@@ -32,7 +32,7 @@ export class Server {
   virtual ~Server() = default;
   virtual void Disconnect(std::function<void(bool)> callback,
                           std::chrono::milliseconds timeout) = 0;
-  virtual void RequestHostSync(const HostId& id, HostSyncCallback callback) = 0;
+  virtual void RequestHostSync(HostPublicId id, HostSyncCallback callback) = 0;
   virtual void SyncThisHost(const HostData& data) = 0;
   virtual void AddThisHostText(const std::string& text) = 0;
 };

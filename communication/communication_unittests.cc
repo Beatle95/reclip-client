@@ -44,7 +44,7 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
   std::optional<SyncResponse> ParseSyncResponse(const QByteArray&) override {
     return sync_;
   }
-  std::optional<HostId> ParseHostId(const QByteArray&) override {
+  std::optional<HostPublicId> ParseHostId(const QByteArray&) override {
     return host_id_;
   }
   std::optional<HostData> ParseHostData(const QByteArray&) override {
@@ -57,7 +57,7 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
  private:
   IntroductionResponse introduction_;
   std::optional<SyncResponse> sync_;
-  std::optional<HostId> host_id_;
+  std::optional<HostPublicId> host_id_;
   std::optional<HostData> host_data_;
   std::optional<TextUpdateResponse> new_text_;
 };
@@ -65,7 +65,7 @@ class SerializationTestHelperImpl : public SerializationTestHelper {
 class MockConnectionInfoProvider : public ConnectionInfoProvider {
  public:
   ~MockConnectionInfoProvider() override = default;
-  HostSecret GetSecret() const override { return {}; };
+  HostSecretId GetSecret() const override { return {}; };
   const std::string& GetIp() const override {
     static constexpr std::string kEmptyString{};
     return kEmptyString;
@@ -77,9 +77,9 @@ class MockServerDelegate : public ServerDelegate {
  public:
   MOCK_METHOD0(GetConnectionInfoProvider, ConnectionInfoProvider&());
   MOCK_METHOD2(OnFullSync, void(HostData, std::vector<HostData>));
-  MOCK_METHOD1(HostConnected, void(const HostId& id));
-  MOCK_METHOD1(HostDisconnected, void(const HostId& id));
-  MOCK_METHOD2(HostTextAdded, void(const HostId& id, const std::string& text));
+  MOCK_METHOD1(HostConnected, void(HostPublicId id));
+  MOCK_METHOD1(HostDisconnected, void(HostPublicId id));
+  MOCK_METHOD2(HostTextAdded, void(HostPublicId id, const std::string& text));
   MOCK_METHOD1(HostSynced, void(HostData data));
 
   MockServerDelegate() {
@@ -183,7 +183,7 @@ SerializationTestHelperImpl CreateCommonSerializationHelper() {
   result.SetIntroductionResult(
       IntroductionResponse{.server_version = {}, .error = {}, .success = true});
   result.SetSyncResult(SyncResponse{});
-  result.SetHostIdResult(HostId{});
+  result.SetHostIdResult(HostPublicId{});
   result.SetHostDataResult(HostData{});
   result.SetNewTextResult(TextUpdateResponse{});
   return result;
@@ -230,9 +230,9 @@ TEST_F(ServerTestBase, ServerClientCommunication) {
   ASSERT_NE(connection(), nullptr);
   WaitServerConnected();
 
-  const HostId kKnownId = "known_id";
-  const std::string kIrrelevantText = "some text";
+  constexpr auto kKnownId = 100_pubid;
   constexpr uint64_t kIrrelevantMsgId = 0;
+  const std::string kIrrelevantText = "some text";
 
   serializer_helper.SetHostIdResult(kKnownId);
   EXPECT_CALL(*server_delegate(), HostConnected(kKnownId)).Times(1);

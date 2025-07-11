@@ -49,7 +49,7 @@ export class ServerImpl : public QObject, public Server, public ServerConnection
 
   // Server overrides:
   void Disconnect(std::function<void(bool)> callback, std::chrono::milliseconds timeout) override;
-  void RequestHostSync(const HostId& id, HostSyncCallback callback) override;
+  void RequestHostSync(HostPublicId id, HostSyncCallback callback) override;
   void SyncThisHost(const HostData& data) override;
   void AddThisHostText(const std::string& text) override;
 
@@ -229,7 +229,7 @@ void ServerImpl::RequestFullSync() {
   });
 }
 
-void ServerImpl::RequestHostSync(const HostId& id, HostSyncCallback callback) {
+void ServerImpl::RequestHostSync(HostPublicId id, HostSyncCallback callback) {
   if (state_ != ConnectionState::kConnected) {
     return;
   }

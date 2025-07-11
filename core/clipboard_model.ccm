@@ -40,16 +40,16 @@ export class ClipboardModel : public SimpleObservable<ClipboardModelObserver>,
 
   // Returns true if data was fully adopted (i.e. after this call data inside
   // model is exactly the same as this function's arguments).
-  bool AdoptThisHostData(const HostId& id, std::string name, ClipboardData data);
+  bool AdoptThisHostData(HostPublicId id, std::string name, ClipboardData data);
   void ResetHostsData(std::vector<HostData> other_hosts_data);
   void SetHostData(HostData data);
   // Returns false, if host with such id was not found.
-  bool AddHostText(const HostId& id, const std::string& text);
-  bool IsHostExists(const HostId& id) const;
+  bool AddHostText(HostPublicId id, const std::string& text);
+  bool IsHostExists(HostPublicId id) const;
 
   size_t GetHostsCount() const;
   const HostData& GetHostData(size_t host_index) const;
-  const HostData* GetHostData(const HostId& id) const;
+  const HostData* GetHostData(HostPublicId id) const;
   const HostData& GetThisHostData() const;
 
  private:
@@ -77,7 +77,7 @@ void ClipboardModel::OnTextUpdated(const std::string& str) {
   }
 }
 
-bool ClipboardModel::AdoptThisHostData(const HostId& id, std::string name, ClipboardData data) {
+bool ClipboardModel::AdoptThisHostData(HostPublicId id, std::string name, ClipboardData data) {
   this_host_data_.id = id;
 
   bool result = true;
@@ -144,7 +144,7 @@ void ClipboardModel::SetHostData(HostData data) {
   }
 }
 
-bool ClipboardModel::AddHostText(const HostId& id, const std::string& text) {
+bool ClipboardModel::AddHostText(HostPublicId id, const std::string& text) {
   DLOG(INFO) << "[EVENT] ClipboardModel received new text from server for host "
                 "with id: "
              << id;
@@ -158,7 +158,7 @@ bool ClipboardModel::AddHostText(const HostId& id, const std::string& text) {
   return true;
 }
 
-bool ClipboardModel::IsHostExists(const HostId& id) const {
+bool ClipboardModel::IsHostExists(HostPublicId id) const {
   return std::find_if(hosts_data_.begin(), hosts_data_.end(),
                       [&](const auto& elem) { return elem.id == id; }) != hosts_data_.end();
 }
@@ -184,7 +184,7 @@ const HostData& ClipboardModel::GetHostData(size_t host_index) const {
   return hosts_data_[host_index];
 }
 
-const HostData* ClipboardModel::GetHostData(const HostId& id) const {
+const HostData* ClipboardModel::GetHostData(HostPublicId id) const {
   auto it = std::find_if(hosts_data_.begin(), hosts_data_.end(),
                          [&](const auto& elem) { return elem.id == id; });
   return it != hosts_data_.end() ? &(*it) : nullptr;

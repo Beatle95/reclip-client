@@ -37,18 +37,18 @@ struct SyncResponse {
 };
 
 struct TextUpdateResponse {
-  HostId id;
+  HostPublicId id;
   std::string text;
 };
 
-QByteArray SerializeIntroduction(const HostSecret& id);
-QByteArray SerializeHostSyncRequest(const HostId& id);
+QByteArray SerializeIntroduction(const HostSecretId& id);
+QByteArray SerializeHostSyncRequest(HostPublicId id);
 QByteArray SerializeTextUpdate(const std::string& text);
 QByteArray SerializeHostSync(const HostData& data);
 
 IntroductionResponse ParseIntroductionResponse(const QByteArray& data);
 std::optional<SyncResponse> ParseSyncResponse(const QByteArray& data);
-std::optional<HostId> ParseHostId(const QByteArray& data);
+std::optional<HostPublicId> ParseHostId(const QByteArray& data);
 std::optional<HostData> ParseHostData(const QByteArray& data);
 std::optional<TextUpdateResponse> ParseNewText(const QByteArray& data);
 
@@ -61,7 +61,7 @@ class SerializationTestHelper {
       const QByteArray& data) = 0;
   virtual std::optional<SyncResponse> ParseSyncResponse(
       const QByteArray& data) = 0;
-  virtual std::optional<HostId> ParseHostId(const QByteArray& data) = 0;
+  virtual std::optional<HostPublicId> ParseHostId(const QByteArray& data) = 0;
   virtual std::optional<HostData> ParseHostData(const QByteArray& data) = 0;
   virtual std::optional<TextUpdateResponse> ParseNewText(
       const QByteArray& data) = 0;
@@ -79,7 +79,7 @@ constexpr char kWrongServerResponseFormat[] = "wrong server response format";
 
 std::optional<HostData> ParseHost(const QJsonObject& obj) {
   const auto id = obj.find(kHostIdKey);
-  if (id == obj.end() || !id->isString()) {
+  if (id == obj.end() || !id->isDouble()) {
     return {};
   }
   const auto name = obj.find(kHostNameKey);
@@ -101,7 +101,7 @@ std::optional<HostData> ParseHost(const QJsonObject& obj) {
   }
 
   return HostData{
-      .id = id->toString().toStdString(),
+      .id = HostPublicId{id->toInteger()},
       .name = name->toString().toStdString(),
       .data = {.text = std::move(text)},
   };
@@ -111,15 +111,16 @@ SerializationTestHelper* g_test_helper = nullptr;
 
 }  // namespace
 
-QByteArray SerializeIntroduction(const HostSecret& id) {
+QByteArray SerializeIntroduction(const HostSecretId& id) {
   QJsonObject root;
   root["ClientSecretKey"] = QString::fromStdString(id);
   return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
-QByteArray SerializeHostSyncRequest(const HostId& id) {
+QByteArray SerializeHostSyncRequest(HostPublicId id) {
   QJsonObject root;
-  root[kHostIdKey] = QString::fromStdString(id);
+  // For now let's ignore possible casting errors.
+  root[kHostIdKey] = static_cast<int64_t>(id.ToUnderlying());
   return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
@@ -136,7 +137,8 @@ QByteArray SerializeHostSync(const HostData& data) {
   }
 
   QJsonObject root;
-  root[kHostIdKey] = QString::fromStdString(data.id);
+  // For now let's ignore possible casting errors.
+  root[kHostIdKey] = static_cast<int64_t>(data.id.ToUnderlying());
   root[kHostNameKey] = QString::fromStdString(data.name);
   root["TextData"] = text;
 
@@ -222,7 +224,7 @@ std::optional<SyncResponse> ParseSyncResponse(const QByteArray& data) {
   return SyncResponse{std::move(*this_host), std::move(hosts)};
 }
 
-std::optional<HostId> ParseHostId(const QByteArray& data) {
+std::optional<HostPublicId> ParseHostId(const QByteArray& data) {
   if (g_test_helper) {
     return g_test_helper->ParseHostId(data);
   }
@@ -237,10 +239,10 @@ std::optional<HostId> ParseHostId(const QByteArray& data) {
   }
 
   const auto id = root.find(kHostIdKey);
-  if (id == root.end() || !id->isString()) {
+  if (id == root.end() || !id->isDouble()) {
     return {};
   }
-  return id->toString().toStdString();
+  return HostPublicId{id->toInteger()};
 }
 
 std::optional<HostData> ParseHostData(const QByteArray& data) {
@@ -269,14 +271,14 @@ std::optional<TextUpdateResponse> ParseNewText(const QByteArray& data) {
   }
 
   const auto id = root.find(kHostIdKey);
-  if (id == root.end() || !id->isString()) {
+  if (id == root.end() || !id->isDouble()) {
     return {};
   }
   const auto text = root.find("Text");
   if (text == root.end() || !text->isString()) {
     return {};
   }
-  return TextUpdateResponse{.id = id->toString().toStdString(),
+  return TextUpdateResponse{.id = HostPublicId{id->toInteger()},
                             .text = text->toString().toStdString()};
 }
 
