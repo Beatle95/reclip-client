@@ -6,6 +6,7 @@
 #include <QStyle>
 #include <cassert>
 
+#include "base/log.h"
 #include "ui/host_clipboard_view.h"
 
 import base.preferences;
@@ -15,8 +16,6 @@ constexpr std::string_view kHeightPref = "ui.remembered_height";
 constexpr std::string_view kWidthPref = "ui.remembered_width";
 
 namespace reclip {
-
-ContentWindow::~ContentWindow() = default;
 
 ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
   auto& prefs = Preferences::GetInstance();
@@ -34,6 +33,12 @@ ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
   setMinimumSize(kMinSize);
   setCentralWidget(scroll);
   show();
+
+  LOG(INFO) << "Showing UI";
+}
+
+ContentWindow::~ContentWindow() {
+  LOG(INFO) << "Hiding UI";
 }
 
 void ContentWindow::RemoveHostViews(uint32_t start_index) {
@@ -92,6 +97,9 @@ void ContentWindow::closeEvent(QCloseEvent*) {
   auto& prefs = Preferences::GetInstance();
   prefs.SetInt(kHeightPref, cur_size.height());
   prefs.SetInt(kWidthPref, cur_size.width());
+
+  assert(delegate_);
+  delegate_->OnClosed();
 }
 
 void ContentWindow::HostItemClicked(uint32_t element_index) {

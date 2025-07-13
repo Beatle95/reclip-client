@@ -5,9 +5,12 @@ module;
 #include <QCommandLineParser>
 #include <QDir>
 #include <QFile>
+#include <QMenu>
 #include <QStandardPaths>
+#include <QSystemTrayIcon>
 #include <QTimer>
 #include <cassert>
+#include <chrono>
 #include <format>
 #include <memory>
 #include <stdexcept>
@@ -24,6 +27,8 @@ import core.clipboard_model;
 import communication.connection_info_provider;
 import communication.communication_manager;
 import ui.clipboard_controller;
+
+using namespace std::chrono_literals;
 
 namespace reclip {
 
@@ -45,6 +50,9 @@ export class ApplicationMain : public QApplication {
   void PrefInit();
   void LoadStyleSheet();
 
+  void ShowAction(bool);
+  void QuitAction(bool);
+
   QDir app_data_dir_;
 
   std::unique_ptr<Clipboard> clipboard_;
@@ -52,22 +60,27 @@ export class ApplicationMain : public QApplication {
   std::unique_ptr<CommunicationManager> communication_host_;
   std::unique_ptr<ClipboardController> controller_;
 
+  std::unique_ptr<QMenu> tray_menu_;
+  std::unique_ptr<QSystemTrayIcon> tray_icon_;
+
   ScopedObservation<ClipboardModel, Clipboard> model_observation_;
   ScopedObservation<ClipboardController, ClipboardModel> controller_observation_;
 };
 
-ApplicationMain::ApplicationMain(int argc, char** argv)
-    : QApplication(argc, argv) {
+ApplicationMain::ApplicationMain(int argc, char** argv) : QApplication(argc, argv) {
   DLogInfo("Application::Ctor");
+
+  setWindowIcon(QIcon(":icons/app_icon.png"));
   setApplicationName(QString::fromUtf8(kAppName.data(), kAppName.size()));
   setApplicationVersion(QStringLiteral("0.0.1"));
+  setQuitOnLastWindowClosed(false);
 
   const auto init_args = ParseArgs();
   InitAppData(init_args.app_data_dir);
   Preferences::Init((app_data_dir_.absolutePath() + "/preferences.json").toStdString());
   auto conn_info_provider = ConnectionInfoProvider::Create(
       (app_data_dir_.absolutePath() + "/server_config.json").toStdString());
-  
+
   LoadStyleSheet();
 
   model_ = std::make_unique<ClipboardModel>();
@@ -77,9 +90,23 @@ ApplicationMain::ApplicationMain(int argc, char** argv)
 
   communication_host_ =
       std::make_unique<CommunicationManager>(*model_, std::move(conn_info_provider));
-  controller_ =
-      std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
+  controller_ = std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
   controller_observation_.Reset(*controller_, *model_);
+
+  if (QSystemTrayIcon::isSystemTrayAvailable()) {
+    tray_menu_ = std::make_unique<QMenu>();
+    // TODO: Add Show UI hotkey.
+    auto* show_action = tray_menu_->addAction("Show");
+    auto* quit_action = tray_menu_->addAction("Quit");
+    connect(show_action, &QAction::triggered, this, &ApplicationMain::ShowAction);
+    connect(quit_action, &QAction::triggered, this, &ApplicationMain::QuitAction);
+
+    tray_icon_ = std::make_unique<QSystemTrayIcon>(QIcon(":icons/tray_icon.png"));
+    tray_icon_->setContextMenu(tray_menu_.get());
+    tray_icon_->show();
+  } else {
+    DLogWarning("System tray is not available");
+  }
 
   if (init_args.show_ui_on_startup) {
     QTimer::singleShot(0, [this]() { controller_->ShowUi(); });
@@ -102,7 +129,7 @@ InitArguments ApplicationMain::ParseArgs() {
                                         "Show UI right after application is started.");
   parser.addOption(show_ui_on_startup);
   QCommandLineOption app_data_dir("app-data-dir", "Overrides default user data directrory path.",
-                                   "path");
+                                  "path");
   parser.addOption(app_data_dir);
 
   parser.process(arguments());
@@ -112,8 +139,8 @@ InitArguments ApplicationMain::ParseArgs() {
 
 void ApplicationMain::InitAppData(const QString& user_overriden_data_dir) {
   app_data_dir_ = !user_overriden_data_dir.isEmpty()
-                       ? user_overriden_data_dir
-                       : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+                      ? user_overriden_data_dir
+                      : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
   if (!app_data_dir_.exists() && !app_data_dir_.mkpath(".")) {
     // TODO: Instead of throwing we want to show some dialog which will help to set up an
     // application.
@@ -131,6 +158,28 @@ void ApplicationMain::LoadStyleSheet() {
     return;
   }
   setStyleSheet(file.readAll());
+}
+
+void ApplicationMain::ShowAction(bool) {
+  assert(controller_);
+  if (!controller_->IsUiShown()) {
+    controller_->ShowUi();
+  }
+}
+
+void ApplicationMain::QuitAction(bool) {
+  LogInfo("Quit application triggered from tray icon");
+  if (controller_->IsUiShown()) {
+    controller_->HideUi();
+  }
+  communication_host_->DisconnectFromServer(
+      [](bool success) {
+        if (!success) {
+          DLogWarning("Unable to disconnect from server gracefully");
+        }
+        quit();
+      },
+      500ms);
 }
 
 }  // namespace reclip

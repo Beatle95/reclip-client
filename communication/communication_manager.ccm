@@ -25,7 +25,6 @@ export class CommunicationManager : public ServerDelegate, public ClipboardModel
   explicit CommunicationManager(ClipboardModel& model,
                                 std::unique_ptr<ConnectionInfoProvider> conn_info_provider);
   ~CommunicationManager() override = default;
-  // TODO: call disconnect upon application closing.
   void DisconnectFromServer(std::function<void(bool)> callback, std::chrono::milliseconds timeout);
 
   // ServerDelegate overrides:

@@ -5,7 +5,7 @@ module;
 export module base.observer_helper:scoped_observation;
 
 namespace reclip {
-// TODO: add traits
+
 export template <typename Subscriber, typename Target>
 class ScopedObservation {
  public:
@@ -54,4 +54,5 @@ class ScopedObservation {
   Subscriber* subscriber_ = nullptr;
   Target* target_ = nullptr;
 };
+
 }  // namespace reclip

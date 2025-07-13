@@ -1,4 +1,5 @@
 #pragma once
+
 #include <QMainWindow>
 #include <cstdint>
 #include <vector>
@@ -17,6 +18,7 @@ class ContentWindow : public QMainWindow {
    public:
     virtual ~Delegate() = default;
     virtual void OnItemClicked(uint32_t host_index, uint32_t item_index) = 0;
+    virtual void OnClosed() = 0;
   };
 
   ~ContentWindow();

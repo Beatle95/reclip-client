@@ -14,3 +14,8 @@ add_custom_command(
     ${CMAKE_CURRENT_SOURCE_DIR}/dark.qss
     ${actual_app_path}/dark.qss
 )
+
+target_sources(
+    ${PROJECT_NAME} PRIVATE
+    resources.qrc
+)
