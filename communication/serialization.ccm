@@ -22,7 +22,7 @@ export namespace reclip {
 struct Version {
   uint32_t major;
   uint32_t minor;
-  uint32_t build_number;
+  uint32_t patch;
 };
 
 struct IntroductionResponse {

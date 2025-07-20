@@ -1,3 +1,4 @@
+#include <QtCore/qeventloop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -144,8 +145,13 @@ class ServerTestBase : public TestWithEventLoopBase,
  public:
   ~ServerTestBase() override = default;
 
-  void ResetServer() {
-    server_delegate_ = std::make_unique<MockServerDelegate>();
+  void ResetServer(bool use_nice_mocks = false) {
+    use_nice_mocks_ = use_nice_mocks;
+    if (use_nice_mocks_) {
+      server_delegate_ = std::make_unique<NiceMock<MockServerDelegate>>();
+    } else {
+      server_delegate_ = std::make_unique<MockServerDelegate>();
+    }
     server_ = std::make_unique<ServerImpl>(*server_delegate_);
     ASSERT_TRUE(connection_);
     connection_->SetDelegate(server_.get());
@@ -162,7 +168,12 @@ class ServerTestBase : public TestWithEventLoopBase,
 
   // ServerImpl::TestHelper overrides.
   std::unique_ptr<ServerConnection> CreateConnection() override {
-    auto ptr = std::make_unique<MockConnection>();
+    std::unique_ptr<MockConnection> ptr;
+    if (use_nice_mocks_) {
+      ptr = std::make_unique<NiceMock<MockConnection>>();
+    } else {
+      ptr = std::make_unique<MockConnection>();
+    }
     connection_ = ptr.get();
     return std::move(ptr);
   }
@@ -175,6 +186,7 @@ class ServerTestBase : public TestWithEventLoopBase,
   std::unique_ptr<ServerImpl> server_;
   std::unique_ptr<MockServerDelegate> server_delegate_;
   MockConnection* connection_ = nullptr;
+  bool use_nice_mocks_ = false;
 };
 
 namespace {
@@ -266,4 +278,20 @@ TEST_F(ServerTestBase, ServerClientCommunication) {
   server()->HandleReceieved(kIrrelevantMsgId, ServerMessageType::kHostSynced,
                             {});
   Mock::VerifyAndClearExpectations(server_delegate());
+}
+
+TEST_F(ServerTestBase, VersionCheck) {
+  auto serializer_helper = CreateCommonSerializationHelper();
+  ResetServer(true);
+  serializer_helper.SetIntroductionResult(
+      IntroductionResponse{.server_version{0, 0, 0}, .error = {}, .success = true});
+  WaitServerConnected();
+
+  connection()->Disconnect();
+
+  serializer_helper.SetIntroductionResult(
+      IntroductionResponse{.server_version{999999, 0, 0}, .error = {}, .success = true});
+  QEventLoop loop;
+  EXPECT_CALL(*connection(), Disconnect).WillOnce([&loop] { loop.quit(); });
+  loop.exec();
 }
