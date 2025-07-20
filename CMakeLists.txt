@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0)
-project(reclip VERSION 0.0.1)
+project(reclip VERSION 0.1.0)
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/out/${CMAKE_BUILD_TYPE})
 
@@ -13,6 +13,12 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_BINARY_DIR}/gen)
+
+configure_file (
+    ${CMAKE_CURRENT_SOURCE_DIR}/version.h.in
+    ${CMAKE_BINARY_DIR}/gen/version.h
+)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     add_compile_options(-Wall -Wextra -Wpedantic -Werror)
