@@ -93,6 +93,7 @@ bool ParseNetworkHeader(const QByteArray& data, NetworkHeader& header) {
 ServerConnectionImpl::ServerConnectionImpl(ServerConnection::Delegate& delegate, const QString& ip,
                                            quint16 port)
     : ip_(ip), port_(port), delegate_(&delegate) {
+  LOG(INFO) << "Server address: " << ip_ << ":" << port_;
   socket_.setProtocol(QSsl::SslProtocol::TlsV1_2OrLater);
 
   // TODO: Probably we still will have to add self-signed certs here.
