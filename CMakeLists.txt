@@ -21,7 +21,6 @@ configure_file (
 )
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
-    add_compile_options(-Wall -Wextra -Wpedantic -Werror)
     add_executable(${PROJECT_NAME} MACOSX_BUNDLE null.cc)
 else ()
     message(FATAL_ERROR "Not implemented")
@@ -32,6 +31,12 @@ add_library(reclip_app_main null.cc)
 add_library(reclip_core null.cc)
 add_library(reclip_ui null.cc)
 add_library(reclip_communication null.cc)
+
+target_compile_options(${PROJECT_NAME} PUBLIC -Wall -Wextra -Wpedantic -Werror)
+target_compile_options(reclip_app_main PUBLIC -Wall -Wextra -Wpedantic -Werror)
+target_compile_options(reclip_core PUBLIC -Wall -Wextra -Wpedantic -Werror)
+target_compile_options(reclip_ui PUBLIC -Wall -Wextra -Wpedantic -Werror)
+target_compile_options(reclip_communication PUBLIC -Wall -Wextra -Wpedantic -Werror)
 # main targets
 
 target_link_libraries(
@@ -45,10 +50,12 @@ enable_testing()
 add_executable(unit_tests null.cc)
 target_link_libraries(unit_tests PUBLIC gtest_main gmock)
 add_test(NAME unit_tests COMMAND unit_tests)
+target_compile_options(unit_tests PUBLIC -Wall -Wextra -Wpedantic -Werror)
 
 add_executable(server_integration_tests null.cc)
 target_link_libraries(server_integration_tests PUBLIC gtest_main gmock)
 add_test(NAME server_integration_tests COMMAND server_integration_tests)
+target_compile_options(server_integration_tests PUBLIC -Wall -Wextra -Wpedantic -Werror)
 # tests
 
 add_subdirectory(third_party)

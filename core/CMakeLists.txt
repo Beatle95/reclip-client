@@ -9,6 +9,7 @@ target_sources(
     FILE_SET core_modules TYPE CXX_MODULES FILES
     host_types.ccm
     clipboard_model.ccm
+    shortcut_listener.ccm
 )
 
 if(APPLE)
@@ -24,6 +25,7 @@ target_link_libraries(
     reclip_core PUBLIC
     Qt6::Core
     Qt6::Widgets
+    qhotkey
 )
 
 target_sources(

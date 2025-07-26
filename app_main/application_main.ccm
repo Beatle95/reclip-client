@@ -15,9 +15,8 @@ module;
 #include <memory>
 #include <stdexcept>
 
-#include "version.h"
-
 #include "core/clipboard.h"
+#include "version.h"
 
 export module app_main.application_main;
 
@@ -26,6 +25,7 @@ import base.observer_helper;
 import base.preferences;
 import base.log;
 import core.clipboard_model;
+import core.shortcut_listener;
 import communication.connection_info_provider;
 import communication.communication_manager;
 import ui.clipboard_controller;
@@ -39,28 +39,33 @@ struct InitArguments {
   bool show_ui_on_startup = false;
 };
 
-export class ApplicationMain : public QApplication {
+export class ApplicationMain : public QApplication, public ShortcutListener::Delegate {
  public:
   ApplicationMain(int argc, char** argv);
   ~ApplicationMain();
 
   QDir GetUserDataDir() const { return app_data_dir_; }
 
+  // ShortcutListener overrides
+  void HandleShow() override;
+
  private:
   InitArguments ParseArgs();
   void InitAppData(const QString& user_overriden_data_dir);
   void PrefInit();
   void LoadStyleSheet();
+  void ShowImpl();
 
   void ShowAction(bool);
   void QuitAction(bool);
 
   QDir app_data_dir_;
-
+  
   std::unique_ptr<Clipboard> clipboard_;
   std::unique_ptr<ClipboardModel> model_;
   std::unique_ptr<CommunicationManager> communication_host_;
   std::unique_ptr<ClipboardController> controller_;
+  std::unique_ptr<ShortcutListener> shortcut_listener_;
 
   std::unique_ptr<QMenu> tray_menu_;
   std::unique_ptr<QSystemTrayIcon> tray_icon_;
@@ -94,10 +99,10 @@ ApplicationMain::ApplicationMain(int argc, char** argv) : QApplication(argc, arg
       std::make_unique<CommunicationManager>(*model_, std::move(conn_info_provider));
   controller_ = std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
   controller_observation_.Reset(*controller_, *model_);
+  shortcut_listener_ = std::make_unique<ShortcutListener>(*this);
 
   if (QSystemTrayIcon::isSystemTrayAvailable()) {
     tray_menu_ = std::make_unique<QMenu>();
-    // TODO: Add Show UI hotkey.
     auto* show_action = tray_menu_->addAction("Show");
     auto* quit_action = tray_menu_->addAction("Quit");
     connect(show_action, &QAction::triggered, this, &ApplicationMain::ShowAction);
@@ -120,6 +125,8 @@ ApplicationMain::~ApplicationMain() {
   clipboard_->Stop();
   Preferences::Deinit((app_data_dir_.absolutePath() + "/preferences.json").toStdString());
 }
+
+void ApplicationMain::HandleShow() { ShowImpl(); }
 
 InitArguments ApplicationMain::ParseArgs() {
   QCommandLineParser parser;
@@ -162,11 +169,15 @@ void ApplicationMain::LoadStyleSheet() {
   setStyleSheet(file.readAll());
 }
 
-void ApplicationMain::ShowAction(bool) {
+void ApplicationMain::ShowImpl() {
   assert(controller_);
   if (!controller_->IsUiShown()) {
     controller_->ShowUi();
   }
+}
+
+void ApplicationMain::ShowAction(bool) {
+  ShowImpl();
 }
 
 void ApplicationMain::QuitAction(bool) {

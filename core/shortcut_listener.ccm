@@ -1,0 +1,77 @@
+module;
+
+#include <QHotkey>
+#include <QKeySequence>
+#include <memory>
+
+#include "base/buildflags.h"
+#include "base/log.h"
+
+export module core.shortcut_listener;
+
+import base.preferences;
+
+namespace reclip {
+
+export class ShortcutListener {
+ public:
+  class Delegate {
+   public:
+    virtual void HandleShow() = 0;
+  };
+
+  ShortcutListener(Delegate& delegate);
+  bool SetShowHotkey(const QKeySequence& sequence);
+
+ private:
+  bool InitShowHotkeyListener(const QKeySequence& sequence);
+
+  Delegate* delegate_;
+  std::unique_ptr<QHotkey> show_listener_;
+};
+
+namespace {
+#if BUILDFLAG(IS_MAC)
+constexpr std::string_view kDefaultShowHotkey = "Meta+F1";
+#else
+constexpr std::string_view kDefaultShowHotkey = "Ctrl+F1";
+#endif
+constexpr std::string_view kShowHotkeyPrefName = "core.show_hotkey";
+}  // namespace
+
+ShortcutListener::ShortcutListener(Delegate& delegate) : delegate_(&delegate) {
+  auto& prefs = Preferences::GetInstance();
+  prefs.RegisterString(kShowHotkeyPrefName, kDefaultShowHotkey);
+
+  const auto show_hotkey = prefs.GetString(kShowHotkeyPrefName);
+  QKeySequence sequence(QString::fromUtf8(show_hotkey.data(), show_hotkey.size()));
+  if (InitShowHotkeyListener(sequence)) {
+    DLOG(INFO) << "Show shortcut initialized: " << show_hotkey;
+  } else {
+    DLOG(INFO) << "Unable to initialize show shortcut: " << show_hotkey;
+  }
+}
+
+bool ShortcutListener::SetShowHotkey(const QKeySequence& sequence) {
+  DLOG(INFO) << "Setting show shortcut: " << sequence.toString();
+  auto& prefs = Preferences::GetInstance();
+  prefs.SetString(kShowHotkeyPrefName, sequence.toString().toStdString());
+  return InitShowHotkeyListener(sequence);
+}
+
+bool ShortcutListener::InitShowHotkeyListener(const QKeySequence& sequence) {
+  show_listener_ = std::make_unique<QHotkey>(sequence, true);
+  if (!show_listener_->isRegistered()) {
+    LOG(ERROR) << "Failed to register show shortcut";
+    return false;
+  }
+
+  QObject::connect(show_listener_.get(), &QHotkey::activated, [this]() {
+    LOG(INFO) << "Show shortcut triggered";
+    delegate_->HandleShow();
+  });
+
+  return true;
+}
+
+}  // namespace reclip
