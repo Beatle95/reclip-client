@@ -32,7 +32,10 @@ ContentWindow::ContentWindow(Delegate* delegate) : delegate_(delegate) {
 
   setMinimumSize(kMinSize);
   setCentralWidget(scroll);
+
   show();
+  raise();
+  activateWindow();
 
   LOG(INFO) << "Showing UI";
 }
