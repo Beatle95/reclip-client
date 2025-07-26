@@ -1,3 +1,6 @@
 [submodule "third_party/gtest"]
 	path = third_party/gtest
 	url = https://github.com/google/googletest.git
+[submodule "third_party/qhotkey"]
+	path = third_party/qhotkey
+	url = https://github.com/Skycoder42/QHotkey.git
