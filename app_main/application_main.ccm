@@ -47,14 +47,13 @@ export class ApplicationMain : public QApplication, public ShortcutListener::Del
   QDir GetUserDataDir() const { return app_data_dir_; }
 
   // ShortcutListener overrides
-  void HandleShow() override;
+  void HandleShowShortcut() override;
 
  private:
   InitArguments ParseArgs();
   void InitAppData(const QString& user_overriden_data_dir);
   void PrefInit();
   void LoadStyleSheet();
-  void ShowImpl();
 
   void ShowAction(bool);
   void QuitAction(bool);
@@ -126,7 +125,14 @@ ApplicationMain::~ApplicationMain() {
   Preferences::Deinit((app_data_dir_.absolutePath() + "/preferences.json").toStdString());
 }
 
-void ApplicationMain::HandleShow() { ShowImpl(); }
+void ApplicationMain::HandleShowShortcut() { 
+  assert(controller_);
+  if (controller_->IsUiShown()) {
+    controller_->HideUi();
+  } else {
+    controller_->ShowUi();
+  }
+}
 
 InitArguments ApplicationMain::ParseArgs() {
   QCommandLineParser parser;
@@ -169,15 +175,11 @@ void ApplicationMain::LoadStyleSheet() {
   setStyleSheet(file.readAll());
 }
 
-void ApplicationMain::ShowImpl() {
+void ApplicationMain::ShowAction(bool) {
   assert(controller_);
   if (!controller_->IsUiShown()) {
     controller_->ShowUi();
   }
-}
-
-void ApplicationMain::ShowAction(bool) {
-  ShowImpl();
 }
 
 void ApplicationMain::QuitAction(bool) {

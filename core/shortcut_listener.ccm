@@ -17,7 +17,7 @@ export class ShortcutListener {
  public:
   class Delegate {
    public:
-    virtual void HandleShow() = 0;
+    virtual void HandleShowShortcut() = 0;
   };
 
   ShortcutListener(Delegate& delegate);
@@ -68,7 +68,7 @@ bool ShortcutListener::InitShowHotkeyListener(const QKeySequence& sequence) {
 
   QObject::connect(show_listener_.get(), &QHotkey::activated, [this]() {
     LOG(INFO) << "Show shortcut triggered";
-    delegate_->HandleShow();
+    delegate_->HandleShowShortcut();
   });
 
   return true;
