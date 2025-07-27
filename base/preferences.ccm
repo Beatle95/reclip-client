@@ -10,9 +10,9 @@ module;
 #include <string_view>
 #include <unordered_map>
 
-export module base.preferences;
+#include "base/log.h"
 
-import base.log;
+export module base.preferences;
 
 namespace reclip {
 
@@ -129,7 +129,7 @@ void Preferences::Store(std::string_view prefs_path) {
   const auto path = QString::fromUtf8(prefs_path.data(), prefs_path.size());
   QFile file(path);
   if (!file.open(QIODevice::ReadWrite)) {
-    LogError("Failed to open preferences file {}", prefs_path);
+    LOG(ERROR) << "Failed to open preferences file: " << prefs_path.data();
     return;
   }
 

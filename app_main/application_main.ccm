@@ -15,6 +15,7 @@ module;
 #include <memory>
 #include <stdexcept>
 
+#include "base/log.h"
 #include "core/clipboard.h"
 #include "version.h"
 
@@ -23,7 +24,6 @@ export module app_main.application_main;
 import base.constants;
 import base.observer_helper;
 import base.preferences;
-import base.log;
 import core.clipboard_model;
 import core.shortcut_listener;
 import communication.connection_info_provider;
@@ -74,7 +74,7 @@ export class ApplicationMain : public QApplication, public ShortcutListener::Del
 };
 
 ApplicationMain::ApplicationMain(int argc, char** argv) : QApplication(argc, argv) {
-  DLogInfo("Application::Ctor");
+  DLOG(INFO) << "Application::Ctor";
 
   setWindowIcon(QIcon(":icons/app_icon.png"));
   setApplicationName(QString::fromUtf8(kAppName.data(), kAppName.size()));
@@ -111,7 +111,7 @@ ApplicationMain::ApplicationMain(int argc, char** argv) : QApplication(argc, arg
     tray_icon_->setContextMenu(tray_menu_.get());
     tray_icon_->show();
   } else {
-    DLogWarning("System tray is not available");
+    DLOG(WARNING) << "System tray is not available";
   }
 
   if (init_args.show_ui_on_startup) {
@@ -120,7 +120,7 @@ ApplicationMain::ApplicationMain(int argc, char** argv) : QApplication(argc, arg
 }
 
 ApplicationMain::~ApplicationMain() {
-  DLogInfo("Application::Dtor");
+  DLOG(INFO) << "Application::Dtor";
   clipboard_->Stop();
   Preferences::Deinit((app_data_dir_.absolutePath() + "/preferences.json").toStdString());
 }
@@ -162,14 +162,13 @@ void ApplicationMain::InitAppData(const QString& user_overriden_data_dir) {
     throw std::runtime_error(std::format("Failed to create user data directory: '{}'",
                                          app_data_dir_.absolutePath().toStdString()));
   }
-  DLogInfo("User data directory: {}", app_data_dir_.absolutePath().toStdString());
+  LOG(INFO) << "User data directory: " << app_data_dir_.absolutePath();
 }
 
 void ApplicationMain::LoadStyleSheet() {
   QFile file(applicationDirPath() + "/dark.qss");
   if (!file.open(QIODeviceBase::ReadOnly)) {
-    LogWarning("Unable to open application stylesheet file: {}",
-               (applicationDirPath() + "/dark.qss").toStdString());
+    LOG(WARNING) << "Unable to open application stylesheet file: " << file.fileName();
     return;
   }
   setStyleSheet(file.readAll());
@@ -183,14 +182,14 @@ void ApplicationMain::ShowAction(bool) {
 }
 
 void ApplicationMain::QuitAction(bool) {
-  LogInfo("Quit application triggered from tray icon");
+  LOG(INFO) << "Quit application triggered from tray icon";
   if (controller_->IsUiShown()) {
     controller_->HideUi();
   }
   communication_host_->DisconnectFromServer(
       [](bool success) {
         if (!success) {
-          DLogWarning("Unable to disconnect from server gracefully");
+          LOG(WARNING) << "Unable to disconnect from server gracefully";
         }
         quit();
       },
