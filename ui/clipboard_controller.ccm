@@ -96,6 +96,9 @@ void ClipboardController::OnTextPoped(size_t host_index) {
 }
 
 void ClipboardController::OnHostUpdated(size_t host_index) {
+  if (!content_) {
+    return;
+  }
   const auto view_index = kThisHostOffset + host_index;
   assert(view_index <= content_->HostsCount());
   if (view_index == content_->HostsCount()) {
@@ -108,12 +111,18 @@ void ClipboardController::OnHostUpdated(size_t host_index) {
 }
 
 void ClipboardController::OnThisHostDataReset() {
+  if (!content_) {
+    return;
+  }
   auto* this_view = content_->GetHostView(kThisHostIndex);
   assert(this_view);
   PopulateData(model_->GetThisHostData(), *this_view, true);
 }
 
 void ClipboardController::OnHostsDataReset() {
+  if (!content_) {
+    return;
+  }
   content_->RemoveHostViews(kThisHostIndex + kThisHostOffset);
   ShowHostsModelData();
 }
