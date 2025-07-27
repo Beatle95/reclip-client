@@ -1,17 +1,20 @@
-#pragma once
+module;
+
 #include <memory>
 
 #include "core/clipboard_observer.h"
+
+export module core.clipboard;
 
 import base.observer_helper;
 
 namespace reclip {
 
-class Clipboard : public SimpleObservable<ClipboardObserver> {
+export class Clipboard : public SimpleObservable<ClipboardObserver> {
  public:
-  virtual ~Clipboard() = default;
   static std::unique_ptr<Clipboard> Create();
 
+  virtual ~Clipboard() = default;
   virtual void WriteText(const std::string& text) = 0;
   virtual void Start() = 0;
   virtual void Stop() = 0;

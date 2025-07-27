@@ -16,7 +16,6 @@ module;
 #include <stdexcept>
 
 #include "base/log.h"
-#include "core/clipboard.h"
 #include "version.h"
 
 export module app_main.application_main;
@@ -24,6 +23,7 @@ export module app_main.application_main;
 import base.constants;
 import base.observer_helper;
 import base.preferences;
+import core.clipboard;
 import core.clipboard_model;
 import core.shortcut_listener;
 import communication.connection_info_provider;

@@ -1,6 +1,5 @@
 #include <QtCore/qcoreapplication.h>
 #include <QtCore/qeventloop.h>
-#include <core/clipboard.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -13,6 +12,7 @@ import core.clipboard_model;
 import core.host_types;
 import core.test_with_event_loop_base;
 import core.test_server_process;
+import core.clipboard;
 import communication.communication_manager;
 import communication.connection_info_provider;
 import communication.server_impl;

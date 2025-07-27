@@ -3,12 +3,12 @@ module;
 #include <QPointer>
 #include <cstdint>
 
-#include "core/clipboard.h"
 #include "ui/content_window.h"
 #include "ui/host_clipboard_view.h"
 
 export module ui.clipboard_controller;
 
+import core.clipboard;
 import core.clipboard_model;
 import core.host_types;
 

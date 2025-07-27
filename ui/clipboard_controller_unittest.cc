@@ -3,10 +3,10 @@
 
 #include <QApplication>
 
-#include "core/clipboard.h"
 #include "ui/host_clipboard_view.h"
 
 import base.preferences;
+import core.clipboard;
 import core.clipboard_model;
 import core.host_types;
 import ui.clipboard_controller;
