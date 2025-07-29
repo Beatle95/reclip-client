@@ -41,6 +41,8 @@ class HostSecretId {
   bool IsNull() const { return signature_.empty(); }
   std::span<const uint8_t> GetBinary() const { return signature_; }
 
+  std::strong_ordering operator<=>(const HostSecretId&) const = default;
+
  private:
   friend std::strong_ordering operator<=>(const HostSecretId& lhs, const HostSecretId rhs);
 
@@ -65,6 +67,8 @@ class HostPublicId {
 
   constexpr uint64_t ToUnderlying() const { return id_; }
 
+  std::strong_ordering operator<=>(const HostPublicId&) const = default;
+
  private:
   uint64_t id_ = 0;
 };
@@ -88,10 +92,6 @@ HostSecretId HostSecretId::CreateForTesting(uint8_t num) {
   return result;
 }
 
-std::strong_ordering operator<=>(const HostSecretId& lhs, const HostSecretId rhs) {
-  return lhs.signature_ <=> rhs.signature_;
-}
-
 constexpr HostPublicId operator""_pubid(unsigned long long id) { return HostPublicId(id); }
 
 std::ostream& operator<<(std::ostream& os, HostPublicId id) {
@@ -99,37 +99,12 @@ std::ostream& operator<<(std::ostream& os, HostPublicId id) {
   return os;
 }
 
-bool operator==(HostPublicId lhs, HostPublicId rhs) {
-  return lhs.ToUnderlying() == rhs.ToUnderlying();
-}
-
-bool operator!=(HostPublicId lhs, HostPublicId rhs) {
-  return lhs.ToUnderlying() != rhs.ToUnderlying();
-}
-
-bool operator<(HostPublicId lhs, HostPublicId rhs) {
-  return lhs.ToUnderlying() < rhs.ToUnderlying();
-}
-
-bool operator>(HostPublicId lhs, HostPublicId rhs) {
-  return lhs.ToUnderlying() > rhs.ToUnderlying();
-}
-
-bool operator==(const ClipboardData& lhs, const ClipboardData& rhs) {
-  return lhs.text == rhs.text;
-}
-
-bool operator!=(const ClipboardData& lhs, const ClipboardData& rhs) {
-  return lhs.text != rhs.text;
-}
-
+bool operator==(const ClipboardData& lhs, const ClipboardData& rhs) { return lhs.text == rhs.text; }
+bool operator!=(const ClipboardData& lhs, const ClipboardData& rhs) { return lhs.text != rhs.text; }
 bool operator==(const HostData& lhs, const HostData& rhs) {
   return lhs.id == rhs.id && lhs.name == rhs.name && lhs.data == rhs.data;
 }
-
-bool operator!=(const HostData& lhs, const HostData& rhs) {
-  return !operator==(lhs, rhs);
-}
+bool operator!=(const HostData& lhs, const HostData& rhs) { return !operator==(lhs, rhs); }
 
 }  // namespace reclip
 
