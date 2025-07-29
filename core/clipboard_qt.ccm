@@ -1,0 +1,64 @@
+module;
+
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QObject>
+#include <cassert>
+#include <memory>
+#include <vector>
+
+#include "base/log.h"
+#include "core/clipboard.h"
+#include "core/clipboard_observer.h"
+
+module core.clipboard:impl;
+
+import base.constants;
+
+namespace reclip {
+
+export class ClipboardMac : public QObject, public Clipboard {
+ public:
+  ClipboardListenerQt();
+  void WriteText(const std::string& text) override;
+  void AddObserver(ClipboardObserver* observer) override;
+  void RemoveObserver(ClipboardObserver* observer) override;
+
+ private:
+  void ClipboardTextChanged();
+
+ private:
+  std::vector<ClipboardObserver*> observers_;
+  QClipboard* clipboard_;
+};
+
+void ClipboardMac::WriteText(const std::string&) {
+  // TODO:
+}
+
+ClipboardMac::ClipboardMac() : QObject(nullptr), clipboard_(QGuiApplication::clipboard()) {
+  assert(clipboard_);
+  connect(clipboard_, &QClipboard::dataChanged, this, &ClipboardMac::ClipboardTextChanged);
+}
+
+void ClipboardMac::AddObserver(ClipboardObserver* observer) {
+  if (std::find(observers_.begin(), observers_.end(), observer) == observers_.end()) {
+    observers_.push_back(observer);
+  }
+}
+
+void ClipboardMac::RemoveObserver(ClipboardObserver* observer) {
+  observers_.erase(std::find(observers_.begin(), observers_.end(), observer));
+}
+
+void ClipboardMac::ClipboardTextChanged() {
+  const auto text = clipboard_->text().toStdString();
+  LOG(INFO) << "[EVENT] Application placed text to clipboard: ";
+  DLOG(INFO) << "\"" << text.substr(0, kMaxContentLogSize)
+             << (text.size() > kMaxContentLogSize ? "...\"" : "\"");
+  for (auto* observer : observers_) {
+    observer->OnTextUpdated(text);
+  }
+}
+
+}  // namespace reclip
