@@ -56,17 +56,14 @@ class SerializationTestHelper {
   SerializationTestHelper();
   virtual ~SerializationTestHelper();
 
-  virtual IntroductionResponse ParseIntroductionResponse(
-      const QByteArray& data) = 0;
-  virtual std::optional<SyncResponse> ParseSyncResponse(
-      const QByteArray& data) = 0;
+  virtual IntroductionResponse ParseIntroductionResponse(const QByteArray& data) = 0;
+  virtual std::optional<SyncResponse> ParseSyncResponse(const QByteArray& data) = 0;
   virtual std::optional<HostPublicId> ParseHostId(const QByteArray& data) = 0;
   virtual std::optional<HostData> ParseHostData(const QByteArray& data) = 0;
-  virtual std::optional<TextUpdateResponse> ParseNewText(
-      const QByteArray& data) = 0;
+  virtual std::optional<TextUpdateResponse> ParseNewText(const QByteArray& data) = 0;
 };
 
-}  // export namespace reclip
+}  // namespace reclip
 
 namespace reclip {
 
@@ -193,8 +190,8 @@ std::optional<SyncResponse> ParseSyncResponse(const QByteArray& data) {
 
   auto this_host_it = root.find("ThisHostData");
   auto hosts_data_it = root.find("OtherData");
-  if (this_host_it == root.end() || hosts_data_it == root.end() ||
-      !this_host_it->isObject() || !hosts_data_it->isArray()) {
+  if (this_host_it == root.end() || hosts_data_it == root.end() || !this_host_it->isObject() ||
+      !hosts_data_it->isArray()) {
     return {};
   }
 
