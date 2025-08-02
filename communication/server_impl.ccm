@@ -46,7 +46,8 @@ export class ServerImpl : public QObject, public Server, public ServerConnection
   ~ServerImpl() override;
 
   // Server overrides:
-  void Disconnect(std::function<void(bool)> callback, std::chrono::milliseconds timeout) override;
+  void DisconnectAndStop(std::function<void(bool)> callback,
+                         std::chrono::milliseconds timeout) override;
   void RequestHostSync(HostPublicId id, HostSyncCallback callback) override;
   void SyncThisHost(const HostData& data) override;
   void AddThisHostText(const std::string& text) override;
@@ -57,6 +58,7 @@ export class ServerImpl : public QObject, public Server, public ServerConnection
   void HandleReceieved(uint64_t id, ServerMessageType type, const QByteArray& data) override;
 
   ConnectionState GetStateForTesting() const;
+  void SimulateDisconnectForTesting();
 
  private:
   using ResponceCallback = std::function<void(const QByteArray&)>;
@@ -139,7 +141,8 @@ ServerImpl::ServerImpl(ServerDelegate& delegate) : delegate_(&delegate) {
 
 ServerImpl::~ServerImpl() = default;
 
-void ServerImpl::Disconnect(std::function<void(bool)> callback, std::chrono::milliseconds timeout) {
+void ServerImpl::DisconnectAndStop(std::function<void(bool)> callback,
+                                   std::chrono::milliseconds timeout) {
   if (state_ == ConnectionState::kDisconnected) {
     callback(true);
     return;
@@ -367,6 +370,10 @@ void ServerImpl::HandleReceieved(uint64_t id, ServerMessageType type, const QByt
 }
 
 ServerImpl::ConnectionState ServerImpl::GetStateForTesting() const { return state_; }
+
+void ServerImpl::SimulateDisconnectForTesting() {
+  connection_->Disconnect();
+}
 
 uint64_t ServerImpl::GenerateId() { return id_counter_++; }
 

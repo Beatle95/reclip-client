@@ -58,14 +58,20 @@ class TestClient {
   void AddModelObserver(ClipboardModelObserver* observer) { model_->AddObserver(observer); }
   void RemoveModelObserver(ClipboardModelObserver* observer) { model_->RemoveObserver(observer); }
 
-  void WaitConnected() {
+  void SimulateTemporaryDisconnectFromServer() {
     Server* server = communication_manager_->GetServerForTesting();
     ASSERT_NE(server, nullptr);
     ServerImpl* server_impl = dynamic_cast<ServerImpl*>(server);
     ASSERT_NE(server_impl, nullptr);
-    while (server_impl->GetStateForTesting() != ServerImpl::ConnectionState::kConnected) {
-      QCoreApplication::processEvents();
-    }
+    server_impl->SimulateDisconnectForTesting();
+  }
+
+  void WaitDisconnected()  {
+    WaitForState(ServerImpl::ConnectionState::kDisconnected);
+  }
+
+  void WaitConnected() {
+    WaitForState(ServerImpl::ConnectionState::kConnected);
   }
 
   void Disconnect() {
@@ -80,6 +86,16 @@ class TestClient {
   const ClipboardModel& GetModel() const { return *model_; }
 
  private:
+  void WaitForState(ServerImpl::ConnectionState state) {
+    Server* server = communication_manager_->GetServerForTesting();
+    ASSERT_NE(server, nullptr);
+    ServerImpl* server_impl = dynamic_cast<ServerImpl*>(server);
+    ASSERT_NE(server_impl, nullptr);
+    while (server_impl->GetStateForTesting() != state) {
+      QCoreApplication::processEvents();
+    }
+  }
+
   std::unique_ptr<ClipboardModel> model_;
   std::unique_ptr<CommunicationManager> communication_manager_;
 };
@@ -181,6 +197,29 @@ TEST_F(ClientsGroupIntegration, CoupleClientsCommunication) {
     }
   }
 
+  process.Stop();
+  EXPECT_TRUE(process.WaitFinished(3000));
+}
+
+TEST_F(ClientsGroupIntegration, ManyClientsCommunication) {
+  ServerTestHelper helper;
+  ServerProcess process;
+  ASSERT_TRUE(process.Start("multiple_communication_test", TestConnInfoProvider::kTestPort));
+
+  std::vector<TestClient> clients;
+  static constexpr uint32_t kClientsCount = 30;
+  for (uint32_t i = 0; i < kClientsCount; ++i) {
+    clients.emplace_back(HostSecretId::CreateForTesting(i + 1));
+  }
+  for (auto& client : clients) {
+    client.WaitConnected();
+  }
+
+  clients[0].SimulateTemporaryDisconnectFromServer();
+  clients[0].WaitDisconnected();
+  clients[0].WaitConnected();
+  
+  // TODO: We have to add more clients interactions/disconects here, to ensure system stability.
   process.Stop();
   EXPECT_TRUE(process.WaitFinished(3000));
 }

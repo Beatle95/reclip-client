@@ -64,7 +64,7 @@ CommunicationManager::CommunicationManager(
 
 void CommunicationManager::DisconnectFromServer(std::function<void(bool)> callback,
                                                 std::chrono::milliseconds timeout) {
-  server_->Disconnect(std::move(callback), timeout);
+  server_->DisconnectAndStop(std::move(callback), timeout);
 }
 
 ConnectionInfoProvider& CommunicationManager::GetConnectionInfoProvider() {
