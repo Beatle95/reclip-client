@@ -198,6 +198,13 @@ class SimpleObservable {
   void AddObserver(T* target) { observers_.AddObserver(target); }
   void RemoveObserver(T* target) { observers_.RemoveObserver(target); }
 
+  template <typename MemberFunc, typename... Args>
+  void NotifyObservers(MemberFunc member_func, Args&&... args) {
+    for (auto* observer : observers_) {
+      (observer->*member_func)(std::forward<Args>(args)...);
+    }
+  }
+
  protected:
   ObserversList<T> observers_;
 };

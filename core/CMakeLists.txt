@@ -3,9 +3,10 @@ target_sources(
   PUBLIC
     FILE_SET core_modules TYPE CXX_MODULES FILES
     host_types.ccm
-    clipboard_model.ccm
     shortcut_listener.ccm
     clipboard.ccm
+    hosts_model/hosts_list_model.ccm
+    hosts_model/host_model.ccm
 )
 
 if(APPLE)
@@ -29,7 +30,7 @@ target_link_libraries(
 
 target_sources(
     unit_tests PRIVATE
-    clipboard_model_unittests.cc
+    hosts_model/hosts_model_unittests.cc
 )
 target_sources(
   unit_tests

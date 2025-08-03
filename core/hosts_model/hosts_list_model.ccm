@@ -1,0 +1,104 @@
+module;
+
+#include <format>
+#include <map>
+#include <ranges>
+#include <string>
+
+#include "base/log.h"
+#include "core/clipboard_observer.h"
+
+export module core.hosts_list_model;
+
+export import core.host_model;
+import base.constants;
+import core.host_types;
+import base.observer_helper;
+
+namespace reclip {
+
+export class HostsListModelObserver : public CheckedObserver {
+ public:
+  virtual ~HostsListModelObserver() = default;
+  virtual void OnHostAdded(HostModel& host) = 0;
+  virtual void OnHostRemoved(HostPublicId id) = 0;
+};
+
+export class HostsListModel : public SimpleObservable<HostsListModelObserver>,
+                              public ClipboardObserver {
+ public:
+  using HostsHashMap = std::map<HostPublicId, HostModel>;
+  using iterator = HostsHashMap::iterator;
+
+  ~HostsListModel() override = default;
+
+  iterator begin() { return remote_hosts_.begin(); }
+  iterator end() { return remote_hosts_.end(); }
+
+  const HostModel& GetLocalHost() const { return local_host_; }
+  HostModel& GetLocalHost() { return local_host_; }
+
+  size_t GetRemoteHostsCount() const { return remote_hosts_.size(); }
+  const HostModel* GetHost(HostPublicId id) const {
+    return const_cast<HostsListModel*>(this)->GetHost(id);
+  }
+
+  HostModel* GetHost(HostPublicId id) {
+    const auto it = remote_hosts_.find(id);
+    return it != remote_hosts_.end() ? &it->second : nullptr;
+  }
+
+  void ResetHostData(HostData data);
+  void ResetHostsData(std::vector<HostData> hosts_data);
+
+  // ClipboardObserver overrides:
+  void OnTextUpdated(const std::string& text) override;
+
+ private:
+  void ResetHostImpl(HostData data);
+
+  HostModel local_host_;
+  HostsHashMap remote_hosts_;
+};
+
+void HostsListModel::ResetHostData(HostData data) { ResetHostImpl(std::move(data)); }
+
+void HostsListModel::ResetHostsData(std::vector<HostData> hosts_data) {
+  for (auto& data : hosts_data) {
+    ResetHostImpl(std::move(data));
+  }
+
+  // Let's assume that if some host wasn't presented in hosts_data it must be removed.
+  for (auto it = remote_hosts_.begin(); it != remote_hosts_.end();) {
+    const auto found_it = std::ranges::find_if(
+        hosts_data, [&](const HostData& data) { return data.id == it->first; });
+    if (found_it != hosts_data.end()) {
+      ++it;
+    } else {
+      NotifyObservers(&HostsListModelObserver::OnHostRemoved, it->first);
+      it = remote_hosts_.erase(it);
+      LOG(WARNING) << std::format(
+          "Host named '{}' with id '{}' was removed during model resetting.", it->second.GetName(),
+          it->first.ToUnderlying());
+    }
+  }
+}
+
+void HostsListModel::ResetHostImpl(HostData data) {
+  auto it = remote_hosts_.find(data.id);
+  if (it != remote_hosts_.end()) {
+    it->second.ResetData(std::move(data.name), std::move(data.data));
+  } else {
+    auto [new_elem_it, _] = remote_hosts_.emplace(data.id, std::move(data));
+    NotifyObservers(&HostsListModelObserver::OnHostAdded, new_elem_it->second);
+  }
+}
+
+void HostsListModel::OnTextUpdated(const std::string& text) {
+  LOG(INFO) << "[EVENT] Text added to clipboard. ";
+  DLOG(INFO) << "\"" << text.substr(0, kMaxContentLogSize)
+             << (text.size() > kMaxContentLogSize ? "...\"" : "\"");
+  local_host_.PushText(text);
+}
+
+}  // namespace reclip

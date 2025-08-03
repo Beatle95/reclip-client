@@ -1,0 +1,104 @@
+module;
+
+#include <QObject>
+#include <QWidget>
+#include <memory>
+#include <ranges>
+
+#include "base/log.h"
+#include "ui/host_clipboard_view.h"
+
+export module ui.host_controller;
+
+import base.observer_helper;
+import core.host_model;
+
+namespace reclip {
+
+export class HostControllerDelegate {
+ public:
+  virtual ~HostControllerDelegate() = default;
+  virtual void WriteTextToClipboard(const std::string& text) = 0;
+};
+
+export class HostController : public QObject, public HostModelObserver {
+ public:
+  HostController(HostModel* model, HostControllerDelegate* delegate, bool is_local_device = false);
+
+  std::unique_ptr<QWidget> CreateView();
+  const HostPublicId& GetId() const { return model_->GetId(); }
+
+  // HostModelObserver implementation
+  void OnTextPushed(const std::string& text) override;
+  void OnTextPoped() override;
+  void OnReset() override;
+
+ private:
+  void ElementClicked(int index);
+
+  HostModel* model_;
+  HostControllerDelegate* delegate_;
+
+  HostClipboardView* view_;
+  ScopedObservation<HostController, HostModel> model_observation_;
+
+  bool is_local_device_ = false;
+};
+
+namespace {
+const auto kEmptyNameReplacement = QStringLiteral("Unknown");
+}  // namespace
+
+HostController::HostController(HostModel* model, HostControllerDelegate* delegate,
+                               bool is_local_device)
+    : model_(model), delegate_(delegate), is_local_device_(is_local_device) {
+  assert(model_);
+  assert(delegate_);
+  model_observation_.Reset(*this, *model_);
+}
+
+std::unique_ptr<QWidget> HostController::CreateView() {
+  assert(!view_);
+  auto result = std::make_unique<HostClipboardView>();
+  view_ = result.get();
+
+  QObject::connect(view_, &HostClipboardView::ElementClicked, this,
+                   &HostController::ElementClicked);
+  OnReset();
+  return result;
+}
+
+void HostController::OnTextPushed(const std::string& text) {
+  assert(view_);
+  view_->PushText(QString::fromStdString(text));
+}
+
+void HostController::OnTextPoped()  {
+  assert(view_);
+  view_->PopText();
+}
+
+void HostController::OnReset() {
+  assert(view_);
+  QString name =
+      model_->GetName().empty() ? kEmptyNameReplacement : QString::fromStdString(model_->GetName());
+  if (is_local_device_) {
+    name.append(" (Current Device)");
+  }
+  view_->SetName(name);
+
+  view_->ClearText();
+  for (const auto& text : std::ranges::reverse_view(model_->GetText())) {
+    view_->PushText(QString::fromStdString(text));
+  }
+}
+
+void HostController::ElementClicked(int index) {
+  if (index >= static_cast<int>(model_->GetText().size())) {
+    LOG(ERROR) << "Invalid index clicked";
+    return;
+  }
+  delegate_->WriteTextToClipboard(model_->GetText()[index]);
+}
+
+}  // namespace reclip

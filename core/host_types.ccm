@@ -3,7 +3,6 @@ module;
 #include <cassert>
 #include <compare>
 #include <cstdint>
-#include <deque>
 #include <format>
 #include <ostream>
 #include <span>
@@ -15,8 +14,6 @@ module;
 export module core.host_types;
 
 export namespace reclip {
-
-using ClipboardTextContainer = std::deque<std::string>;
 
 // Incapsulates host secret ID. The size of a signature in all constructors is expected to be equal
 // to kSecretSize, any other value is considered invalid (exception will be thrown).
@@ -75,7 +72,7 @@ class HostPublicId {
 
 // We will create this struct, so later we will populate it with files data.
 struct ClipboardData {
-  ClipboardTextContainer text;
+  std::vector<std::string> text;
 };
 
 struct HostData {
@@ -107,10 +104,3 @@ bool operator==(const HostData& lhs, const HostData& rhs) {
 bool operator!=(const HostData& lhs, const HostData& rhs) { return !operator==(lhs, rhs); }
 
 }  // namespace reclip
-
-export template <>
-struct std::formatter<reclip::HostPublicId> {
-  auto format(reclip::HostPublicId p, format_context& ctx) {
-    return format_to(ctx.out(), "{}", p.ToUnderlying());
-  }
-};

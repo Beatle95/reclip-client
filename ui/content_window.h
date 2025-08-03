@@ -1,8 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
-#include <cstdint>
-#include <vector>
+#include <memory>
 
 class QVBoxLayout;
 
@@ -17,28 +16,24 @@ class ContentWindow : public QMainWindow {
   class Delegate {
    public:
     virtual ~Delegate() = default;
-    virtual void OnItemClicked(uint32_t host_index, uint32_t item_index) = 0;
     virtual void OnClosed() = 0;
   };
 
   ~ContentWindow();
   explicit ContentWindow(Delegate* delegate);
 
-  void RemoveHostViews(uint32_t start_index = 0);
-  HostClipboardView* AddHostView(const QString& name = {});
-  HostClipboardView* GetHostView(uint32_t index);
-  size_t HostsCount() const;
+  void AddHostView(std::unique_ptr<QWidget> host_view);
+  void RemoveHostView(int index);
+  int GetHostsViewsCount() const;
 
   void showEvent(QShowEvent *event) override;
   void closeEvent(QCloseEvent* event) override;
 
- private slots:
-  void HostItemClicked(uint32_t element_index);
+  QWidget* GetHostViewForTests(int index) const;
 
  private:
   Delegate* delegate_ = nullptr;
   QWidget* main_widget_ = nullptr;
-  std::vector<std::unique_ptr<HostClipboardView>> host_views_;
 };
 
 }  // namespace reclip

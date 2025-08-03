@@ -34,6 +34,9 @@ export class ClipboardMac : public QObject, public Clipboard {
 
 void ClipboardMac::WriteText(const std::string&) {
   // TODO:
+  LOG(INFO) << "[EVENT] Application placed text to clipboard: ";
+  DLOG(INFO) << "\"" << text.substr(0, kMaxContentLogSize)
+             << (text.size() > kMaxContentLogSize ? "...\"" : "\"");
 }
 
 ClipboardMac::ClipboardMac() : QObject(nullptr), clipboard_(QGuiApplication::clipboard()) {
@@ -53,9 +56,6 @@ void ClipboardMac::RemoveObserver(ClipboardObserver* observer) {
 
 void ClipboardMac::ClipboardTextChanged() {
   const auto text = clipboard_->text().toStdString();
-  LOG(INFO) << "[EVENT] Application placed text to clipboard: ";
-  DLOG(INFO) << "\"" << text.substr(0, kMaxContentLogSize)
-             << (text.size() > kMaxContentLogSize ? "...\"" : "\"");
   for (auto* observer : observers_) {
     observer->OnTextUpdated(text);
   }

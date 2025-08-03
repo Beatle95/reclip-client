@@ -1,0 +1,122 @@
+module;
+
+#include <algorithm>
+#include <deque>
+#include <iterator>
+#include <ranges>
+#include <string>
+#include <string_view>
+
+#include "base/log.h"
+
+export module core.host_model;
+
+export import core.host_types;
+import base.constants;
+import base.observer_helper;
+
+namespace reclip {
+
+export class HostModelObserver : public CheckedObserver {
+ public:
+  virtual ~HostModelObserver() = default;
+  virtual void OnTextPushed(const std::string& text) = 0;
+  virtual void OnTextPoped() = 0;
+  virtual void OnReset() = 0;
+};
+
+export class HostModel : public SimpleObservable<HostModelObserver> {
+ public:
+  HostModel() = default;
+  HostModel(HostData data);
+  virtual ~HostModel() = default;
+
+  void PushText(std::string_view text);
+  void PopText();
+
+  // Both functions updates inner representation of a host. The only difference is that Adopt
+  // version tries to adop only incoming data, if it can't do that it just returns false. Meaning
+  // that some additional synchronization is required.
+  bool AdoptData(std::string name, ClipboardData data);
+  void ResetData(std::string name, ClipboardData data);
+
+  void SetId(HostPublicId id) { id_ = id; }
+  const HostPublicId& GetId() const { return id_; }
+  const std::string& GetName() const { return name_; }
+  const std::deque<std::string>& GetText() const { return text_; }
+  HostData GetData() const;
+
+ private:
+  HostPublicId id_;
+  std::string name_;
+  std::deque<std::string> text_;
+};
+
+HostModel::HostModel(HostData data) : id_(data.id), name_(std::move(data.name)) {
+  text_.insert(text_.end(), std::make_move_iterator(data.data.text.begin()),
+               std::make_move_iterator(data.data.text.end()));
+}
+
+void HostModel::PushText(std::string_view text) {
+  text_.push_front(std::string(text));
+  NotifyObservers(&HostModelObserver::OnTextPushed, text_.front());
+  while (text_.size() > kClipboardSizeMax) {
+    PopText();
+  }
+}
+
+void HostModel::PopText() {
+  text_.pop_back();
+  NotifyObservers(&HostModelObserver::OnTextPoped);
+}
+
+bool HostModel::AdoptData(std::string name, ClipboardData data) {
+  bool result = true;
+  bool updated = false;
+
+  if (name_.empty()) {
+    name_ = std::move(name);
+    updated = true;
+  } else if (name_ != name) {
+    // TODO: Add possibility to change this host name on server. Our name is the right one, so we
+    // don't want to update it.
+    result = false;
+  }
+
+  if (!std::ranges::equal(text_, data.text)) {
+    DLOG(INFO) << "Adopting unequal data for host '" << name_ << "'";
+    if (text_.empty() && !data.text.empty()) {
+      for (auto it = data.text.begin();
+           it != data.text.end() && text_.size() < kClipboardSizeMax && !data.text.empty(); ++it) {
+        text_.push_back(std::move(*it));
+      }
+      updated = true;
+    } else {
+      // TODO: For now we just prefer local data, later we want to adopt them more precisely.
+      result = false;
+    }
+  } else {
+    DLOG(INFO) << "Adopting equal data for host '" << name_ << "'";
+  }
+
+  if (updated) {
+    NotifyObservers(&HostModelObserver::OnReset);
+  }
+  return result;
+}
+
+void HostModel::ResetData(std::string name, ClipboardData data) {
+  name_ = std::move(name);
+  text_.clear();
+  text_.insert(text_.end(), std::make_move_iterator(data.text.begin()),
+               std::make_move_iterator(data.text.end()));
+  NotifyObservers(&HostModelObserver::OnReset);
+}
+
+HostData HostModel::GetData() const {
+  HostData data{id_, name_, {}};
+  data.data.text.insert(data.data.text.end(), text_.begin(), text_.end());
+  return data;
+}
+
+}  // namespace reclip

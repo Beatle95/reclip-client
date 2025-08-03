@@ -24,11 +24,11 @@ import base.constants;
 import base.observer_helper;
 import base.preferences;
 import core.clipboard;
-import core.clipboard_model;
+import core.hosts_list_model;
 import core.shortcut_listener;
 import communication.connection_info_provider;
 import communication.communication_manager;
-import ui.clipboard_controller;
+import ui.content_window_controller;
 
 using namespace std::chrono_literals;
 
@@ -59,18 +59,17 @@ export class ApplicationMain : public QApplication, public ShortcutListener::Del
   void QuitAction(bool);
 
   QDir app_data_dir_;
-  
+
   std::unique_ptr<Clipboard> clipboard_;
-  std::unique_ptr<ClipboardModel> model_;
+  std::unique_ptr<HostsListModel> hosts_model_;
   std::unique_ptr<CommunicationManager> communication_host_;
-  std::unique_ptr<ClipboardController> controller_;
+  std::unique_ptr<ContentWindowController> content_window_controller_;
   std::unique_ptr<ShortcutListener> shortcut_listener_;
 
   std::unique_ptr<QMenu> tray_menu_;
   std::unique_ptr<QSystemTrayIcon> tray_icon_;
 
-  ScopedObservation<ClipboardModel, Clipboard> model_observation_;
-  ScopedObservation<ClipboardController, ClipboardModel> controller_observation_;
+  ScopedObservation<HostsListModel, Clipboard> model_observation_;
 };
 
 ApplicationMain::ApplicationMain(int argc, char** argv) : QApplication(argc, argv) {
@@ -89,15 +88,15 @@ ApplicationMain::ApplicationMain(int argc, char** argv) : QApplication(argc, arg
 
   LoadStyleSheet();
 
-  model_ = std::make_unique<ClipboardModel>();
+  hosts_model_ = std::make_unique<HostsListModel>();
   clipboard_ = Clipboard::Create();
   clipboard_->Start();
-  model_observation_.Reset(*model_, *clipboard_);
+  model_observation_.Reset(*hosts_model_, *clipboard_);
 
   communication_host_ =
-      std::make_unique<CommunicationManager>(*model_, std::move(conn_info_provider));
-  controller_ = std::make_unique<ClipboardController>(model_.get(), clipboard_.get());
-  controller_observation_.Reset(*controller_, *model_);
+      std::make_unique<CommunicationManager>(*hosts_model_, std::move(conn_info_provider));
+  content_window_controller_ =
+      std::make_unique<ContentWindowController>(hosts_model_.get(), clipboard_.get());
   shortcut_listener_ = std::make_unique<ShortcutListener>(*this);
 
   if (QSystemTrayIcon::isSystemTrayAvailable()) {
@@ -115,7 +114,7 @@ ApplicationMain::ApplicationMain(int argc, char** argv) : QApplication(argc, arg
   }
 
   if (init_args.show_ui_on_startup) {
-    QTimer::singleShot(0, [this]() { controller_->ShowUi(); });
+    QTimer::singleShot(0, [this]() { content_window_controller_->ShowUi(); });
   }
 }
 
@@ -125,12 +124,12 @@ ApplicationMain::~ApplicationMain() {
   Preferences::Deinit((app_data_dir_.absolutePath() + "/preferences.json").toStdString());
 }
 
-void ApplicationMain::HandleShowShortcut() { 
-  assert(controller_);
-  if (controller_->IsUiShown()) {
-    controller_->HideUi();
+void ApplicationMain::HandleShowShortcut() {
+  assert(content_window_controller_);
+  if (content_window_controller_->IsUiShown()) {
+    content_window_controller_->HideUi();
   } else {
-    controller_->ShowUi();
+    content_window_controller_->ShowUi();
   }
 }
 
@@ -175,16 +174,16 @@ void ApplicationMain::LoadStyleSheet() {
 }
 
 void ApplicationMain::ShowAction(bool) {
-  assert(controller_);
-  if (!controller_->IsUiShown()) {
-    controller_->ShowUi();
+  assert(content_window_controller_);
+  if (!content_window_controller_->IsUiShown()) {
+    content_window_controller_->ShowUi();
   }
 }
 
 void ApplicationMain::QuitAction(bool) {
   LOG(INFO) << "Quit application triggered from tray icon";
-  if (controller_->IsUiShown()) {
-    controller_->HideUi();
+  if (content_window_controller_->IsUiShown()) {
+    content_window_controller_->HideUi();
   }
   communication_host_->DisconnectFromServer(
       [](bool success) {

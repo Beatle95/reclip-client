@@ -40,20 +40,20 @@ void HostClipboardView::SetName(const QString& visible_name) {
   name_->setText(visible_name);
 }
 
-void HostClipboardView::PushTop(const QString& text) {
+void HostClipboardView::PushText(const QString& text) {
   auto* text_view = new TextView(text, this);
   connect(text_view, &TextView::Clicked, this, &HostClipboardView::ItemClicked);
   auto* layout = content_->layout();
   layout->addWidget(text_view);
 }
 
-void HostClipboardView::PopBottom() {
+void HostClipboardView::PopText() {
   auto* layout = content_->layout();
   assert(layout->count() != 0);
   delete layout->itemAt(0)->widget();
 }
 
-void HostClipboardView::Clear() {
+void HostClipboardView::ClearText() {
   auto* layout = content_->layout();
   while (layout->count() != 0) {
     delete layout->itemAt(0)->widget();
@@ -66,11 +66,13 @@ size_t HostClipboardView::GetTextItemsCount() const {
 }
 
 void HostClipboardView::ItemClicked() {
+  // We are pushing elements in the reverse order, so we have to take this into account when
+  // reporting clicked index.
   auto* emitter = sender();
   auto* layout = content_->layout();
   for (int i = 0; i < layout->count(); ++i) {
     if (layout->itemAt(i)->widget() == emitter) {
-      emit ElementClicked(static_cast<uint32_t>(i));
+      emit ElementClicked(layout->count() - i - 1);
       return;
     }
   }

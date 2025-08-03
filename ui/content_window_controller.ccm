@@ -1,0 +1,116 @@
+module;
+
+#include <QPointer>
+#include <algorithm>
+#include <cassert>
+
+#include "ui/content_window.h"
+
+export module ui.content_window_controller;
+
+import base.observer_helper;
+import core.clipboard;
+import core.hosts_list_model;
+import core.host_types;
+import ui.host_controller;
+
+namespace reclip {
+
+export class ContentWindowController : public HostsListModelObserver,
+                                       public ContentWindow::Delegate,
+                                       public HostControllerDelegate {
+ public:
+  ContentWindowController(HostsListModel* model, Clipboard* clipboard);
+  ~ContentWindowController();
+
+  void ShowUi();
+  void HideUi();
+  bool IsUiShown() const { return !!content_; }
+
+  // HostsListModelObserver overrides
+  void OnHostAdded(HostModel& host) override;
+  void OnHostRemoved(HostPublicId id) override;
+
+  // ContentWindow::Delegate overrides
+  void OnClosed() override;
+
+  // HostControllerDelegate overrides
+  void WriteTextToClipboard(const std::string& text) override;
+
+  ContentWindow* GetContentWindowForTests() const { return content_.get(); }
+
+ private:
+  void PopulateData(const HostData& model_data, HostClipboardView& view, bool this_device);
+  void ShowHostsModelData();
+
+  QPointer<ContentWindow> content_;
+  std::vector<std::unique_ptr<HostController>> host_controllers_;
+  HostsListModel* model_;
+  Clipboard* clipboard_;
+
+  ScopedObservation<ContentWindowController, HostsListModel> model_observation_;
+};
+
+ContentWindowController::ContentWindowController(HostsListModel* model, Clipboard* clipboard)
+    : model_(model), clipboard_(clipboard) {
+  model_observation_.Reset(*this, *model_);
+}
+
+ContentWindowController::~ContentWindowController() = default;
+
+void ContentWindowController::ShowUi() {
+  assert(!content_);
+  content_ = new ContentWindow(this);
+
+  auto& local_controller =
+      host_controllers_.emplace_back(std::make_unique<HostController>(&model_->GetLocalHost(), this,
+                                                                      /*is_local_device=*/true));
+  content_->AddHostView(local_controller->CreateView());
+  for (auto& [_, host_model] : *model_) {
+    auto& new_controller =
+        host_controllers_.emplace_back(std::make_unique<HostController>(&host_model, this));
+    content_->AddHostView(new_controller->CreateView());
+  }
+}
+
+void ContentWindowController::HideUi() {
+  assert(content_);
+  delete content_;
+}
+
+void ContentWindowController::OnHostAdded(HostModel& host) {
+  if (!content_) {
+    return;
+  }
+  auto& new_controller =
+      host_controllers_.emplace_back(std::make_unique<HostController>(&host, this));
+  content_->AddHostView(new_controller->CreateView());
+}
+
+void ContentWindowController::OnHostRemoved(HostPublicId id) {
+  if (!content_) {
+    return;
+  }
+
+  auto it = std::ranges::find_if(host_controllers_, [&](const auto& controller) {
+    return controller->GetId() == id;
+  });
+  const size_t pos = std::distance(host_controllers_.begin(), it);
+  if (it != host_controllers_.end()) {
+    host_controllers_.erase(it);
+  }
+
+  content_->RemoveHostView(pos);
+}
+
+void ContentWindowController::OnClosed() {
+  assert(content_);
+  content_->deleteLater();
+}
+
+void ContentWindowController::WriteTextToClipboard(const std::string& text) {
+  assert(clipboard_);
+  clipboard_->WriteText(text);
+}
+
+}  // namespace reclip

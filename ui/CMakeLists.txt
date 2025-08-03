@@ -11,7 +11,8 @@ target_sources(
   reclip_ui
   PUBLIC
     FILE_SET ui_modules TYPE CXX_MODULES FILES
-    clipboard_controller.ccm
+    content_window_controller.ccm
+    host_controller.ccm
 )
 
 target_link_libraries(
@@ -23,7 +24,7 @@ target_link_libraries(
 
 target_sources(
     unit_tests PRIVATE
-    clipboard_controller_unittest.cc
+    content_window_unittest.cc
 )
 target_link_libraries(
     unit_tests PUBLIC

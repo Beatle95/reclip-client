@@ -7,7 +7,6 @@
 #include <cassert>
 
 #include "base/log.h"
-#include "ui/host_clipboard_view.h"
 
 import base.preferences;
 
@@ -44,31 +43,23 @@ ContentWindow::~ContentWindow() {
   LOG(INFO) << "Hiding UI";
 }
 
-void ContentWindow::RemoveHostViews(uint32_t start_index) {
-  if (start_index < host_views_.size()) {
-    host_views_.resize(start_index);
-  }
-}
-
-HostClipboardView* ContentWindow::AddHostView(const QString& name) {
+void ContentWindow::AddHostView(std::unique_ptr<QWidget> host_view) {
   QLayout* layout = main_widget_->layout();
   assert(layout != nullptr);
-
-  auto view = std::make_unique<HostClipboardView>(name);
-  layout->addWidget(view.get());
-  connect(view.get(), &HostClipboardView::ElementClicked, this, &ContentWindow::HostItemClicked);
-  host_views_.push_back(std::move(view));
-  return host_views_.back().get();
+  layout->addWidget(host_view.release());
 }
 
-HostClipboardView* ContentWindow::GetHostView(uint32_t index) {
-  if (index >= host_views_.size()) {
-    return nullptr;
-  }
-  return host_views_[index].get();
+void ContentWindow::RemoveHostView(int index) {
+  QLayout* layout = main_widget_->layout();
+  assert(layout != nullptr);
+  layout->removeItem(layout->itemAt(index));
 }
 
-size_t ContentWindow::HostsCount() const { return host_views_.size(); }
+int ContentWindow::GetHostsViewsCount() const {
+  QLayout* layout = main_widget_->layout();
+  assert(layout != nullptr);
+  return layout->count();
+}
 
 void ContentWindow::showEvent(QShowEvent*) {
   // Center on screen when shown and try to keep the size of the window.
@@ -105,16 +96,10 @@ void ContentWindow::closeEvent(QCloseEvent*) {
   delegate_->OnClosed();
 }
 
-void ContentWindow::HostItemClicked(uint32_t element_index) {
-  auto* emitter = sender();
-  for (size_t i = 0; i < host_views_.size(); ++i) {
-    if (host_views_[i].get() == emitter) {
-      assert(delegate_);
-      delegate_->OnItemClicked(i, element_index);
-      return;
-    }
-  }
-  assert(false && "Unreachable");
+QWidget* ContentWindow::GetHostViewForTests(int index) const {
+  QLayout* layout = main_widget_->layout();
+  assert(layout != nullptr);
+  return layout->itemAt(index)->widget();
 }
 
 }  // namespace reclip

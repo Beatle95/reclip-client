@@ -92,3 +92,5 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   controller().HideUi();
   EXPECT_EQ(controller().GetContentWindowForTests(), nullptr);
 }
+
+// TODO: Test text position in ui.
