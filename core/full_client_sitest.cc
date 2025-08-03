@@ -8,7 +8,7 @@
 
 import base.constants;
 import base.observer_helper;
-import core.clipboard_model;
+import core.hosts_list_model;
 import core.host_types;
 import core.test_with_event_loop_base;
 import core.test_server_process;
@@ -49,14 +49,14 @@ class TestConnInfoProvider : public ConnectionInfoProvider {
 class TestClient {
  public:
   explicit TestClient(HostSecretId secret) {
-    model_ = std::make_unique<ClipboardModel>();
+    model_ = std::make_unique<HostsListModel>();
     communication_manager_ = std::make_unique<CommunicationManager>(
         *model_, std::make_unique<TestConnInfoProvider>(secret));
   }
 
   void AddText(const std::string& text) { model_->OnTextUpdated(text); }
-  void AddModelObserver(ClipboardModelObserver* observer) { model_->AddObserver(observer); }
-  void RemoveModelObserver(ClipboardModelObserver* observer) { model_->RemoveObserver(observer); }
+  void AddModelObserver(HostsListModelObserver* observer) { model_->AddObserver(observer); }
+  void RemoveModelObserver(HostsListModelObserver* observer) { model_->RemoveObserver(observer); }
 
   void SimulateTemporaryDisconnectFromServer() {
     Server* server = communication_manager_->GetServerForTesting();
@@ -83,7 +83,7 @@ class TestClient {
     }
   }
 
-  const ClipboardModel& GetModel() const { return *model_; }
+  HostsListModel& GetModel() const { return *model_; }
 
  private:
   void WaitForState(ServerImpl::ConnectionState state) {
@@ -96,12 +96,40 @@ class TestClient {
     }
   }
 
-  std::unique_ptr<ClipboardModel> model_;
+  std::unique_ptr<HostsListModel> model_;
   std::unique_ptr<CommunicationManager> communication_manager_;
 };
 
-class ModelUpdatesWaiter : public ClipboardModelObserver {
+class ModelUpdatesWaiter : private HostsListModelObserver, private HostModelObserver {
  public:
+  using Subscription = ScopedObservation<ModelUpdatesWaiter, HostModel>;
+
+  ~ModelUpdatesWaiter() override {
+    UnsubscribeAll();
+  }
+
+  void Subscribe(HostsListModel& model) {
+    hosts_list_subscriptions_.push_back(&model);
+    model.AddObserver(this);
+
+    for (auto& [_, host] : model) {
+      hosts_subscriptions_.push_back(&host);
+      host.AddObserver(this);
+    }
+  } 
+
+  void UnsubscribeAll() {
+    for (auto* target : hosts_subscriptions_) {
+      target->RemoveObserver(this);
+    }
+    hosts_subscriptions_.clear();
+
+    for (auto* target : hosts_list_subscriptions_) {
+      target->RemoveObserver(this);
+    }
+    hosts_list_subscriptions_.clear();
+  }
+
   void WaitForCalls(uint32_t expected_count) {
     assert(!event_loop_.isRunning());
     if (calls_ < expected_count) {
@@ -110,22 +138,37 @@ class ModelUpdatesWaiter : public ClipboardModelObserver {
     }
   }
 
-  // ClipboardModelObserver overrides:
-  void OnTextPushed(size_t) override {
+  // HostsListModelObserver overrides:
+  void OnHostAdded(HostModel& host) override {
+    hosts_subscriptions_.push_back(&host);
+    host.AddObserver(this);
+  }
+
+  void OnBeforeHostRemoved(HostModel& host) override {
+    const auto it = std::find(hosts_subscriptions_.begin(), hosts_subscriptions_.end(), &host);
+    if (it != hosts_subscriptions_.end()) {
+      hosts_subscriptions_.erase(it);
+      host.RemoveObserver(this);
+    } else {
+      assert(false && "HostModelObserver::OnBeforeHostRemoved called for unknown host");
+      throw std::runtime_error("HostModelObserver::OnBeforeHostRemoved called for unknown host");
+    }
+  }
+
+  // HostModelObserver overrides:
+  void OnTextPushed(const std::string&) override {
     ++calls_;
     if (event_loop_.isRunning() && calls_ == expected_calls_) {
       event_loop_.quit();
     }
   }
-
-  void OnThisTextPushed() override {}
-  void OnThisTextPoped() override {}
-  void OnHostUpdated(size_t) override {}
-  void OnTextPoped(size_t) override {}
-  void OnThisHostDataReset() override {}
-  void OnHostsDataReset() override {}
+  void OnTextPoped() override {}
+  void OnReset() override {}
 
  private:
+  std::vector<HostsListModel*> hosts_list_subscriptions_;
+  std::vector<HostModel*> hosts_subscriptions_;
+
   QEventLoop event_loop_;
   uint32_t expected_calls_ = 0;
   uint32_t calls_ = 0;
@@ -147,8 +190,7 @@ TEST_F(ClientsGroupIntegration, CoupleClientsCommunication) {
 
   ModelUpdatesWaiter waiter;
   std::for_each(clients.begin(), clients.end(),
-                [&](TestClient& client) { client.AddModelObserver(&waiter); });
-
+                [&](TestClient& client) mutable { waiter.Subscribe(client.GetModel()); });
   std::for_each(clients.begin(), clients.end(),
                 [&](TestClient& client) { client.WaitConnected(); });
 
@@ -162,36 +204,35 @@ TEST_F(ClientsGroupIntegration, CoupleClientsCommunication) {
   }
   waiter.WaitForCalls(clients.size() * (clients.size() - 1) * kUpdatesCount);
 
-  std::for_each(clients.begin(), clients.end(),
-                [&](TestClient& client) { client.RemoveModelObserver(&waiter); });
+  waiter.UnsubscribeAll();
   std::for_each(clients.begin(), clients.end(), [&](TestClient& client) { client.Disconnect(); });
 
   for (uint32_t main_client = 0; main_client < clients.size(); ++main_client) {
-    const auto& this_data = clients[main_client].GetModel().GetThisHostData();
+    const auto& this_data = clients[main_client].GetModel().GetLocalHost();
     // This is set by server.
-    EXPECT_EQ(this_data.id, HostPublicId(main_client + 1));
-    EXPECT_EQ(this_data.name, std::format("name{}", main_client + 1));
+    EXPECT_EQ(this_data.GetId(), HostPublicId(main_client + 1));
+    EXPECT_EQ(this_data.GetName(), std::format("name{}", main_client + 1));
 
-    EXPECT_EQ(this_data.data.text.size(), kClipboardSizeMax);
+    EXPECT_EQ(this_data.GetText().size(), kClipboardSizeMax);
     for (uint32_t text_index = 0; text_index < kClipboardSizeMax; ++text_index) {
-      EXPECT_EQ(this_data.data.text[text_index],
+      EXPECT_EQ(this_data.GetText()[text_index],
                 std::format("client_{}_text_{}", main_client + 1, kUpdatesCount - text_index));
     }
 
-    EXPECT_EQ(clients[main_client].GetModel().GetHostsCount(), clients.size() - 1);
+    EXPECT_EQ(clients[main_client].GetModel().GetRemoteHostsCount(), clients.size() - 1);
     for (uint32_t client_counter = 0; client_counter < clients.size(); ++client_counter) {
       if (client_counter == main_client) {
         continue;
       }
       // Hosts position inside model is not defined, so we will find each expected element.
-      const HostData* other_data =
-          clients[main_client].GetModel().GetHostData(HostPublicId(client_counter + 1));
+      const HostModel* other_data =
+          clients[main_client].GetModel().GetHost(HostPublicId(client_counter + 1));
       ASSERT_NE(other_data, nullptr);
-      EXPECT_EQ(other_data->name, std::format("name{}", client_counter + 1));
+      EXPECT_EQ(other_data->GetName(), std::format("name{}", client_counter + 1));
 
-      EXPECT_EQ(other_data->data.text.size(), kClipboardSizeMax);
+      EXPECT_EQ(other_data->GetText().size(), kClipboardSizeMax);
       for (uint32_t text_index = 0; text_index < kClipboardSizeMax; ++text_index) {
-        EXPECT_EQ(other_data->data.text[text_index],
+        EXPECT_EQ(other_data->GetText()[text_index],
                   std::format("client_{}_text_{}", client_counter + 1, kUpdatesCount - text_index));
       }
     }

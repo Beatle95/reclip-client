@@ -21,7 +21,7 @@ export class HostsListModelObserver : public CheckedObserver {
  public:
   virtual ~HostsListModelObserver() = default;
   virtual void OnHostAdded(HostModel& host) = 0;
-  virtual void OnHostRemoved(HostPublicId id) = 0;
+  virtual void OnBeforeHostRemoved(HostModel& host) = 0;
 };
 
 export class HostsListModel : public SimpleObservable<HostsListModelObserver>,
@@ -75,7 +75,7 @@ void HostsListModel::ResetHostsData(std::vector<HostData> hosts_data) {
     if (found_it != hosts_data.end()) {
       ++it;
     } else {
-      NotifyObservers(&HostsListModelObserver::OnHostRemoved, it->first);
+      NotifyObservers(&HostsListModelObserver::OnBeforeHostRemoved, it->second);
       it = remote_hosts_.erase(it);
       LOG(WARNING) << std::format(
           "Host named '{}' with id '{}' was removed during model resetting.", it->second.GetName(),

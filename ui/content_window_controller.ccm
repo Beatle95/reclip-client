@@ -29,7 +29,7 @@ export class ContentWindowController : public HostsListModelObserver,
 
   // HostsListModelObserver overrides
   void OnHostAdded(HostModel& host) override;
-  void OnHostRemoved(HostPublicId id) override;
+  void OnBeforeHostRemoved(HostModel& host) override;
 
   // ContentWindow::Delegate overrides
   void OnClosed() override;
@@ -87,13 +87,13 @@ void ContentWindowController::OnHostAdded(HostModel& host) {
   content_->AddHostView(new_controller->CreateView());
 }
 
-void ContentWindowController::OnHostRemoved(HostPublicId id) {
+void ContentWindowController::OnBeforeHostRemoved(HostModel& host) {
   if (!content_) {
     return;
   }
 
   auto it = std::ranges::find_if(host_controllers_, [&](const auto& controller) {
-    return controller->GetId() == id;
+    return controller->GetId() == host.GetId();
   });
   const size_t pos = std::distance(host_controllers_.begin(), it);
   if (it != host_controllers_.end()) {
