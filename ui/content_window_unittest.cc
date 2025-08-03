@@ -1,3 +1,5 @@
+#include "ui/content_window.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -7,9 +9,9 @@
 
 import base.preferences;
 import core.clipboard;
-import core.clipboard_model;
+import core.hosts_list_model;
 import core.host_types;
-import ui.clipboard_controller;
+import ui.content_window_controller;
 
 using namespace reclip;
 
@@ -31,23 +33,20 @@ class ModelControllerIntegrationTest : public ::testing::Test {
   ModelControllerIntegrationTest()
       : app_(argc, argv),
         preferences_guard_(Preferences::InitForTesting()),
-        model_(std::make_unique<ClipboardModel>()),
-        controller_(std::make_unique<ClipboardController>(model_.get(), &mock_clipboard_)) {
-    model_->AddObserver(controller_.get());
+        model_(std::make_unique<HostsListModel>()),
+        controller_(std::make_unique<ContentWindowController>(model_.get(), &mock_clipboard_)) {
   }
 
-  ~ModelControllerIntegrationTest() { model_->RemoveObserver(controller_.get()); }
-
   MockClipboard& clipboard() { return mock_clipboard_; }
-  ClipboardModel& model() { return *model_; }
-  ClipboardController& controller() { return *controller_; }
+  HostsListModel& model() { return *model_; }
+  ContentWindowController& controller() { return *controller_; }
 
  private:
   QApplication app_;
   MockPreferencesGuard preferences_guard_;
   MockClipboard mock_clipboard_;
-  std::unique_ptr<ClipboardModel> model_;
-  std::unique_ptr<ClipboardController> controller_;
+  std::unique_ptr<HostsListModel> model_;
+  std::unique_ptr<ContentWindowController> controller_;
 };
 
 TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
@@ -55,39 +54,42 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   controller().ShowUi();
   auto* window = controller().GetContentWindowForTests();
   ASSERT_NE(window, nullptr);
-  ASSERT_EQ(window->HostsCount(), 1);
+  ASSERT_EQ(window->GetHostsViewsCount(), 1);
 
-  EXPECT_TRUE(model().AdoptThisHostData(0_pubid, "name", {.text = {"text1", "text2"}}));
-  ASSERT_EQ(window->HostsCount(), 1);
-  EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
+  auto get_items_count = [window](int index) -> int {
+    auto* view = dynamic_cast<HostClipboardView*>(window->GetHostViewForTests(index));
+    if (!view) {
+      return -1;
+    }
+    return view->GetTextItemsCount();
+  };
+
+  EXPECT_TRUE(model().GetLocalHost().AdoptData("name", {.text = {"text1", "text2"}}));
+  ASSERT_EQ(window->GetHostsViewsCount(), 1);
+  EXPECT_EQ(get_items_count(0), 2);
 
   model().ResetHostsData({
       HostData{.id = 1_pubid, .name = "host1", .data = ClipboardData{.text = {"text0"}}},
       HostData{.id = 2_pubid, .name = "host2", .data = ClipboardData{.text = {"text1", "text2"}}},
   });
-  ASSERT_EQ(window->HostsCount(), 3);
-  EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
-  EXPECT_EQ(window->GetHostView(1)->GetTextItemsCount(), 1u);
-  EXPECT_EQ(window->GetHostView(2)->GetTextItemsCount(), 2u);
+  ASSERT_EQ(window->GetHostsViewsCount(), 3);
+  EXPECT_EQ(get_items_count(0), 2);
+  EXPECT_EQ(get_items_count(1), 1);
+  EXPECT_EQ(get_items_count(2), 2);
 
   model().ResetHostsData({});
-  ASSERT_EQ(window->HostsCount(), 1);
+  ASSERT_EQ(window->GetHostsViewsCount(), 1);
 
-  model().SetHostData(
+  model().ResetHostData(
       HostData{.id = 3_pubid, .name = "host", .data = ClipboardData{.text = {"text1", "text2"}}});
-  ASSERT_EQ(window->HostsCount(), 2u);
-  EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
-  EXPECT_EQ(window->GetHostView(1)->GetTextItemsCount(), 2u);
+  ASSERT_EQ(window->GetHostsViewsCount(), 2u);
+  EXPECT_EQ(get_items_count(0), 2u);
+  EXPECT_EQ(get_items_count(1), 2u);
 
-  EXPECT_TRUE(model().AddHostText(3_pubid, "text3"));
-  ASSERT_EQ(window->HostsCount(), 2u);
-  EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
-  EXPECT_EQ(window->GetHostView(1)->GetTextItemsCount(), 3u);
-
-  EXPECT_FALSE(model().AddHostText(323_pubid, "text3"));
-  ASSERT_EQ(window->HostsCount(), 2u);
-  EXPECT_EQ(window->GetHostView(0)->GetTextItemsCount(), 2u);
-  EXPECT_EQ(window->GetHostView(1)->GetTextItemsCount(), 3u);
+  model().GetHost(3_pubid)->PushText("text3");
+  ASSERT_EQ(window->GetHostsViewsCount(), 2u);
+  EXPECT_EQ(get_items_count(0), 2u);
+  EXPECT_EQ(get_items_count(1), 3u);
 
   controller().HideUi();
   EXPECT_EQ(controller().GetContentWindowForTests(), nullptr);

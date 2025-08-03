@@ -2,103 +2,109 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <deque>
 #include <format>
 #include <memory>
 
 import base.constants;
 import base.observer_helper;
-import core.clipboard_model;
+import core.hosts_list_model;
 import core.host_types;
 
 using namespace reclip;
 using ::testing::_;
 
-class MockClipboardModelObserver : public ClipboardModelObserver {
+class MockHostModelObserver : public HostModelObserver {
  public:
-  MOCK_METHOD0(OnThisTextPushed, void());
-  MOCK_METHOD0(OnThisTextPoped, void());
-  MOCK_METHOD1(OnHostUpdated, void(size_t));
-  MOCK_METHOD1(OnTextPushed, void(size_t));
-  MOCK_METHOD1(OnTextPoped, void(size_t));
-  MOCK_METHOD0(OnThisHostDataReset, void());
-  MOCK_METHOD0(OnHostsDataReset, void());
+  MOCK_METHOD1(OnTextPushed, void(const std::string&));
+  MOCK_METHOD0(OnTextPoped, void());
+  MOCK_METHOD0(OnReset, void());
 };
 
 class ClipboardModelTest : public ::testing::Test {
  public:
-  ClipboardModelTest()
-      : model_(std::make_unique<ClipboardModel>()),
-        observer_(std::make_unique<MockClipboardModelObserver>()) {
-    observation_.Reset(*observer_, *model_);
+  ClipboardModelTest() : model_(std::make_unique<HostsListModel>()) {}
+
+  const std::deque<std::string>& GetLocalHostTextData() {
+    return model_->GetLocalHost().GetText();
   }
 
-  auto GetThisTextData() {
-    return model_->GetThisHostData().data.text;
+  const std::deque<std::string>& GetRemoteHostTextData(HostPublicId id) {
+    auto* host = model_->GetHost(id);
+    if (!host) {
+      throw std::runtime_error("Host not found");
+    }
+    return host->GetText();
   }
-
-  auto GetTextData(size_t host_index) {
-    assert(host_index < model_->GetHostsCount());
-    return model_->GetHostData(host_index).data.text;
-  }
-
-  MockClipboardModelObserver& observer() { return *observer_; }
 
  protected:
-  std::unique_ptr<ClipboardModel> model_;
-  std::unique_ptr<MockClipboardModelObserver> observer_;
-  ScopedObservation<MockClipboardModelObserver, ClipboardModel> observation_;
+  std::unique_ptr<HostsListModel> model_;
 };
 
 TEST_F(ClipboardModelTest, ThisHostTextUpdating) {
-  EXPECT_TRUE(GetThisTextData().empty());
-  EXPECT_CALL(observer(), OnThisTextPushed()).Times(kClipboardSizeMax + 1);
-  EXPECT_CALL(observer(), OnThisTextPoped()).Times(1);
+  MockHostModelObserver observer;
+  ScopedObservation<MockHostModelObserver, HostModel> observation_;
+  observation_.Reset(observer, model_->GetLocalHost());
+
+  EXPECT_TRUE(GetLocalHostTextData().empty());
+  EXPECT_CALL(observer, OnTextPushed(_)).Times(kClipboardSizeMax + 1);
+  EXPECT_CALL(observer, OnTextPoped()).Times(1);
   for (size_t i = 0; i < kClipboardSizeMax + 1; ++i) {
     model_->OnTextUpdated(std::format("text_{}", i));
-    EXPECT_EQ(GetThisTextData().size(), std::min(i + 1, kClipboardSizeMax));
+    EXPECT_EQ(GetLocalHostTextData().size(), std::min(i + 1, kClipboardSizeMax));
   }
   for (size_t i = 0; i < kClipboardSizeMax; ++i) {
-    ASSERT_LT(i, GetThisTextData().size());
-    EXPECT_EQ(GetThisTextData()[i], std::format("text_{}", kClipboardSizeMax - i))
+    ASSERT_LT(i, GetLocalHostTextData().size());
+    EXPECT_EQ(GetLocalHostTextData()[i], std::format("text_{}", kClipboardSizeMax - i))
         << "Index was: " << i;
   }
-  EXPECT_EQ(model_->GetHostsCount(), 0);
+  EXPECT_EQ(model_->GetRemoteHostsCount(), 0);
 }
 
 TEST_F(ClipboardModelTest, ProcessRemoteHostTextUpdate) {
   constexpr auto kNewHostId = 200_pubid;
+  EXPECT_TRUE(GetLocalHostTextData().empty());
+  EXPECT_EQ(model_->GetRemoteHostsCount(), 0);
+
+  model_->ResetHostData(HostData{.id = kNewHostId, .name = {}, .data = {}});
+  auto* new_host = model_->GetHost(kNewHostId);
+  ASSERT_NE(new_host, nullptr);
+
+  MockHostModelObserver observer;
+  ScopedObservation<MockHostModelObserver, HostModel> observation_;
+  observation_.Reset(observer, *new_host);
+
   {
-    EXPECT_TRUE(GetThisTextData().empty());
-    EXPECT_EQ(model_->GetHostsCount(), 0);
-    EXPECT_FALSE(model_->AddHostText(kNewHostId, "text"));
-    EXPECT_TRUE(GetThisTextData().empty());
+    EXPECT_CALL(observer, OnTextPushed(_)).Times(1);
+    new_host->PushText("text");
+    EXPECT_TRUE(GetLocalHostTextData().empty());
   }
   {
-    EXPECT_CALL(observer(), OnHostUpdated(_)).Times(1);
-    model_->SetHostData(HostData{.id = kNewHostId, .name = {}, .data = {}});
-    EXPECT_EQ(model_->GetHostsCount(), 1);
-    EXPECT_TRUE(GetThisTextData().empty());
-    EXPECT_TRUE(GetTextData(0).empty());
+    EXPECT_CALL(observer, OnReset()).Times(1);
+    model_->ResetHostData(HostData{.id = kNewHostId, .name = {}, .data = {}});
+    EXPECT_EQ(model_->GetRemoteHostsCount(), 1);
+    EXPECT_TRUE(GetLocalHostTextData().empty());
+    EXPECT_TRUE(GetRemoteHostTextData(kNewHostId).empty());
   }
   {
-    EXPECT_CALL(observer(), OnTextPushed(0)).Times(1);
-    model_->AddHostText(kNewHostId, "text");
-    EXPECT_TRUE(GetThisTextData().empty());
-    EXPECT_EQ(GetTextData(0).size(), 1u);
+    EXPECT_CALL(observer, OnTextPushed(_)).Times(1);
+    new_host->PushText("text");
+    EXPECT_TRUE(GetLocalHostTextData().empty());
+    EXPECT_EQ(GetRemoteHostTextData(kNewHostId).size(), 1u);
   }
 
-  EXPECT_CALL(observer(), OnTextPoped(0)).Times(2);
+  EXPECT_CALL(observer, OnTextPoped()).Times(2);
   for (size_t i = 0; i < kClipboardSizeMax + 1; ++i) {
-    EXPECT_CALL(observer(), OnTextPushed(0)).Times(1);
-    model_->AddHostText(kNewHostId, std::format("text_{}", i));
-    EXPECT_EQ(GetTextData(0).size(), std::min(i + 2, kClipboardSizeMax));
+    EXPECT_CALL(observer, OnTextPushed(_)).Times(1);
+    new_host->PushText(std::format("text_{}", i));
+    EXPECT_EQ(GetRemoteHostTextData(kNewHostId).size(), std::min(i + 2, kClipboardSizeMax));
   }
 
   for (size_t i = 0; i < kClipboardSizeMax; ++i) {
-    ASSERT_LT(i, GetTextData(0).size());
-    EXPECT_EQ(GetTextData(0)[i], std::format("text_{}", kClipboardSizeMax - i))
+    ASSERT_LT(i, GetRemoteHostTextData(kNewHostId).size());
+    EXPECT_EQ(GetRemoteHostTextData(kNewHostId)[i], std::format("text_{}", kClipboardSizeMax - i))
         << "Index was: " << i;
   }
   // First must remain empty.
-  EXPECT_TRUE(GetThisTextData().empty());
+  EXPECT_TRUE(GetLocalHostTextData().empty());
 }

@@ -1,7 +1,7 @@
-#include <QtCore/qeventloop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <QEventLoop>
 #include <QTimer>
 #include <cassert>
 #include <memory>
@@ -271,7 +271,7 @@ TEST_F(ServerTestBase, ServerClientCommunication) {
   HostData synced_host{
       .id = kKnownId,
       .name = "name",
-      .data = {.text = ClipboardTextContainer{kIrrelevantText}}};
+      .data = {.text = {kIrrelevantText}}};
   serializer_helper.SetHostDataResult(synced_host);
   EXPECT_CALL(*server_delegate(), HostSynced(synced_host)).Times(1);
   EXPECT_CALL(*server_delegate(), GetConnectionInfoProvider).Times(AnyNumber());
