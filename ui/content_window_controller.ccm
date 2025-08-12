@@ -1,8 +1,8 @@
 module;
 
-#include <QPointer>
 #include <algorithm>
 #include <cassert>
+#include <memory>
 
 #include "ui/content_window.h"
 
@@ -25,7 +25,7 @@ export class ContentWindowController : public HostsListModelObserver,
 
   void ShowUi();
   void HideUi();
-  bool IsUiShown() const { return !!content_; }
+  bool IsUiShown() const { return !!content_window_; }
 
   // HostsListModelObserver overrides
   void OnHostAdded(HostModel& host) override;
@@ -37,13 +37,13 @@ export class ContentWindowController : public HostsListModelObserver,
   // HostControllerDelegate overrides
   void WriteTextToClipboard(const std::string& text) override;
 
-  ContentWindow* GetContentWindowForTests() const { return content_.get(); }
+  ContentWindow* GetContentWindowForTests() const { return content_window_.get(); }
 
  private:
   void PopulateData(const HostData& model_data, HostClipboardView& view, bool this_device);
   void ShowHostsModelData();
 
-  QPointer<ContentWindow> content_;
+  std::unique_ptr<ContentWindow> content_window_;
   std::vector<std::unique_ptr<HostController>> host_controllers_;
   HostsListModel* model_;
   Clipboard* clipboard_;
@@ -59,36 +59,35 @@ ContentWindowController::ContentWindowController(HostsListModel* model, Clipboar
 ContentWindowController::~ContentWindowController() = default;
 
 void ContentWindowController::ShowUi() {
-  assert(!content_);
-  content_ = new ContentWindow(this);
+  assert(!content_window_);
+  content_window_ = std::make_unique<ContentWindow>(this);
 
   auto& local_controller =
       host_controllers_.emplace_back(std::make_unique<HostController>(&model_->GetLocalHost(), this,
                                                                       /*is_local_device=*/true));
-  content_->AddHostView(local_controller->CreateView());
+  content_window_->AddHostView(local_controller->CreateView());
   for (auto& [_, host_model] : *model_) {
     auto& new_controller =
         host_controllers_.emplace_back(std::make_unique<HostController>(&host_model, this));
-    content_->AddHostView(new_controller->CreateView());
+    content_window_->AddHostView(new_controller->CreateView());
   }
 }
 
 void ContentWindowController::HideUi() {
-  assert(content_);
-  delete content_;
+  content_window_.reset();
 }
 
 void ContentWindowController::OnHostAdded(HostModel& host) {
-  if (!content_) {
+  if (!content_window_) {
     return;
   }
   auto& new_controller =
       host_controllers_.emplace_back(std::make_unique<HostController>(&host, this));
-  content_->AddHostView(new_controller->CreateView());
+  content_window_->AddHostView(new_controller->CreateView());
 }
 
 void ContentWindowController::OnBeforeHostRemoved(HostModel& host) {
-  if (!content_) {
+  if (!content_window_) {
     return;
   }
 
@@ -100,12 +99,11 @@ void ContentWindowController::OnBeforeHostRemoved(HostModel& host) {
     host_controllers_.erase(it);
   }
 
-  content_->RemoveHostView(pos);
+  content_window_->RemoveHostView(pos);
 }
 
 void ContentWindowController::OnClosed() {
-  assert(content_);
-  content_->deleteLater();
+  content_window_.reset();
 }
 
 void ContentWindowController::WriteTextToClipboard(const std::string& text) {
