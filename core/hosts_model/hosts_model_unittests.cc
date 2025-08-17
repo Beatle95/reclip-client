@@ -30,7 +30,7 @@ class ClipboardModelTest : public ::testing::Test {
   }
 
   const std::deque<std::string>& GetRemoteHostTextData(HostPublicId id) {
-    auto* host = model_->GetHost(id);
+    auto* host = model_->GetRemoteHost(id);
     if (!host) {
       throw std::runtime_error("Host not found");
     }
@@ -66,8 +66,8 @@ TEST_F(ClipboardModelTest, ProcessRemoteHostTextUpdate) {
   EXPECT_TRUE(GetLocalHostTextData().empty());
   EXPECT_EQ(model_->GetRemoteHostsCount(), 0);
 
-  model_->ResetHostData(HostData{.id = kNewHostId, .name = {}, .data = {}});
-  auto* new_host = model_->GetHost(kNewHostId);
+  model_->ResetLocalHostData(HostData{.id = kNewHostId, .name = {}, .data = {}});
+  auto* new_host = model_->GetRemoteHost(kNewHostId);
   ASSERT_NE(new_host, nullptr);
 
   MockHostModelObserver observer;
@@ -81,7 +81,7 @@ TEST_F(ClipboardModelTest, ProcessRemoteHostTextUpdate) {
   }
   {
     EXPECT_CALL(observer, OnReset()).Times(1);
-    model_->ResetHostData(HostData{.id = kNewHostId, .name = {}, .data = {}});
+    model_->ResetLocalHostData(HostData{.id = kNewHostId, .name = {}, .data = {}});
     EXPECT_EQ(model_->GetRemoteHostsCount(), 1);
     EXPECT_TRUE(GetLocalHostTextData().empty());
     EXPECT_TRUE(GetRemoteHostTextData(kNewHostId).empty());

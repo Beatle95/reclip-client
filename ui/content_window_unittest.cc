@@ -68,7 +68,7 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   ASSERT_EQ(window->GetHostsViewsCount(), 1);
   EXPECT_EQ(get_items_count(0), 2);
 
-  model().ResetHostsData({
+  model().ResetRemoteHostsData({
       HostData{.id = 1_pubid, .name = "host1", .data = ClipboardData{.text = {"text0"}}},
       HostData{.id = 2_pubid, .name = "host2", .data = ClipboardData{.text = {"text1", "text2"}}},
   });
@@ -77,16 +77,16 @@ TEST_F(ModelControllerIntegrationTest, ModelReactionTests) {
   EXPECT_EQ(get_items_count(1), 1);
   EXPECT_EQ(get_items_count(2), 2);
 
-  model().ResetHostsData({});
+  model().ResetRemoteHostsData({});
   ASSERT_EQ(window->GetHostsViewsCount(), 1);
 
-  model().ResetHostData(
+  model().ResetLocalHostData(
       HostData{.id = 3_pubid, .name = "host", .data = ClipboardData{.text = {"text1", "text2"}}});
   ASSERT_EQ(window->GetHostsViewsCount(), 2u);
   EXPECT_EQ(get_items_count(0), 2u);
   EXPECT_EQ(get_items_count(1), 2u);
 
-  model().GetHost(3_pubid)->PushText("text3");
+  model().GetRemoteHost(3_pubid)->PushText("text3");
   ASSERT_EQ(window->GetHostsViewsCount(), 2u);
   EXPECT_EQ(get_items_count(0), 2u);
   EXPECT_EQ(get_items_count(1), 3u);

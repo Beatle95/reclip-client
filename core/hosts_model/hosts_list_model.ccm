@@ -39,17 +39,16 @@ export class HostsListModel : public SimpleObservable<HostsListModelObserver>,
   HostModel& GetLocalHost() { return local_host_; }
 
   size_t GetRemoteHostsCount() const { return remote_hosts_.size(); }
-  const HostModel* GetHost(HostPublicId id) const {
-    return const_cast<HostsListModel*>(this)->GetHost(id);
+  const HostModel* GetRemoteHost(HostPublicId id) const {
+    return const_cast<HostsListModel*>(this)->GetRemoteHost(id);
   }
-
-  HostModel* GetHost(HostPublicId id) {
+  HostModel* GetRemoteHost(HostPublicId id) {
     const auto it = remote_hosts_.find(id);
     return it != remote_hosts_.end() ? &it->second : nullptr;
   }
 
-  void ResetHostData(HostData data);
-  void ResetHostsData(std::vector<HostData> hosts_data);
+  void ResetLocalHostData(HostData data);
+  void ResetRemoteHostsData(std::vector<HostData> hosts_data);
 
   // ClipboardObserver overrides:
   void OnTextUpdated(const std::string& text) override;
@@ -61,9 +60,9 @@ export class HostsListModel : public SimpleObservable<HostsListModelObserver>,
   HostsHashMap remote_hosts_;
 };
 
-void HostsListModel::ResetHostData(HostData data) { ResetHostImpl(std::move(data)); }
+void HostsListModel::ResetLocalHostData(HostData data) { ResetHostImpl(std::move(data)); }
 
-void HostsListModel::ResetHostsData(std::vector<HostData> hosts_data) {
+void HostsListModel::ResetRemoteHostsData(std::vector<HostData> hosts_data) {
   for (auto& data : hosts_data) {
     ResetHostImpl(std::move(data));
   }

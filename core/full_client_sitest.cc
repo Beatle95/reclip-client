@@ -226,7 +226,7 @@ TEST_F(ClientsGroupIntegration, CoupleClientsCommunication) {
       }
       // Hosts position inside model is not defined, so we will find each expected element.
       const HostModel* other_data =
-          clients[main_client].GetModel().GetHost(HostPublicId(client_counter + 1));
+          clients[main_client].GetModel().GetRemoteHost(HostPublicId(client_counter + 1));
       ASSERT_NE(other_data, nullptr);
       EXPECT_EQ(other_data->GetName(), std::format("name{}", client_counter + 1));
 

@@ -75,11 +75,11 @@ void CommunicationManager::OnFullSync(HostData this_host_data, std::vector<HostD
   if (!local_host.AdoptData(std::move(this_host_data.name), std::move(this_host_data.data))) {
     server_->SyncThisHost(local_host.GetData());
   }
-  model_->ResetHostsData(std::move(data));
+  model_->ResetRemoteHostsData(std::move(data));
 }
 
 void CommunicationManager::HostConnected(HostPublicId id) {
-  if (!model_->GetHost(id)) {
+  if (!model_->GetRemoteHost(id)) {
     server_->RequestHostSync(id, std::bind(&CommunicationManager::OnHostSynced, this, _1));
   }
 }
@@ -90,7 +90,7 @@ void CommunicationManager::HostDisconnected(HostPublicId id) {
 }
 
 void CommunicationManager::HostTextAdded(HostPublicId id, const std::string& text) {
-  auto* host = model_->GetHost(id);
+  auto* host = model_->GetRemoteHost(id);
   if (host) {
     host->PushText(text);
   } else {
@@ -98,7 +98,9 @@ void CommunicationManager::HostTextAdded(HostPublicId id, const std::string& tex
   }
 }
 
-void CommunicationManager::HostSynced(HostData data) { model_->ResetHostData(std::move(data)); }
+void CommunicationManager::HostSynced(HostData data) {
+  model_->ResetLocalHostData(std::move(data));
+}
 
 void CommunicationManager::OnTextPushed(const std::string& text) {
   server_->AddThisHostText(text);
