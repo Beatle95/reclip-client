@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <format>
 #include <memory>
+#include <random>
+#include <ranges>
 
 import base.constants;
 import base.observer_helper;
@@ -242,6 +244,51 @@ TEST_F(ClientsGroupIntegration, CoupleClientsCommunication) {
   EXPECT_TRUE(process.WaitFinished(3000));
 }
 
+// Test that after reconnection there is correct data for client in the model.
+TEST_F(ClientsGroupIntegration, ModelIsCorrectAfterReconnection) {
+  ServerTestHelper helper;
+  ServerProcess process;
+  ASSERT_TRUE(process.Start("simple_communication_test", TestConnInfoProvider::kTestPort));
+
+  TestClient client1(HostSecretId::CreateForTesting(1));
+  client1.WaitConnected();
+  TestClient client2(HostSecretId::CreateForTesting(2));
+  client2.WaitConnected();
+
+  client1.AddText("text1");
+  client1.AddText("text2");
+
+  client2.AddText("text1");
+  client2.SimulateTemporaryDisconnectFromServer();
+  client2.AddText("text2");
+  client2.WaitConnected();
+  client2.SimulateTemporaryDisconnectFromServer();
+  client2.WaitConnected();
+
+  auto* host1 = client2.GetModel().GetRemoteHost(1_pubid);
+  ASSERT_NE(host1, nullptr);
+  auto* host2 = client1.GetModel().GetRemoteHost(2_pubid);
+  ASSERT_NE(host2, nullptr);
+
+  const auto check_text = [&](const HostModel& host) {
+    const auto& text = host.GetText();
+    const auto start_time = std::chrono::steady_clock::now();
+    while (text.size() < 2) {
+      NonBlockingDelay(5ms);
+      if (std::chrono::steady_clock::now() - start_time > 10s) {
+        ASSERT_TRUE(false) << "Timeout reached.";
+      }
+    }
+    EXPECT_EQ(text[0], "text2");
+    EXPECT_EQ(text[1], "text1");
+  };
+  check_text(*host1);
+  check_text(*host2);
+
+  process.Stop();
+  EXPECT_TRUE(process.WaitFinished(3000));
+}
+
 TEST_F(ClientsGroupIntegration, ManyClientsCommunication) {
   ServerTestHelper helper;
   ServerProcess process;
@@ -252,15 +299,74 @@ TEST_F(ClientsGroupIntegration, ManyClientsCommunication) {
   for (uint32_t i = 0; i < kClientsCount; ++i) {
     clients.emplace_back(HostSecretId::CreateForTesting(i + 1));
   }
-  for (auto& client : clients) {
-    client.WaitConnected();
+
+  const auto simulate_disconnects = [&]() {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(1, 100);
+    for (auto& client : clients | std::views::drop(1)) {
+      if (distrib(gen) % 2 == 0) {
+        client.SimulateTemporaryDisconnectFromServer();
+      }
+    }
+  };
+  const auto wait_all_connected = [&]() {
+    for (auto& client : clients) {
+      client.WaitConnected();
+    }
+  };
+  const auto add_all_text = [&](int number) {
+    for (uint32_t i = 0; i < clients.size(); ++i) {
+      clients[i].AddText(std::format("client_{}_text{}", i + 1, number));
+    }
+  };
+
+  wait_all_connected();
+  add_all_text(1);
+  NonBlockingDelay(10ms);
+  simulate_disconnects();
+  add_all_text(2);
+  NonBlockingDelay(10ms);
+  wait_all_connected();
+  add_all_text(3);
+  NonBlockingDelay(10ms);
+  simulate_disconnects();
+  add_all_text(4);
+  NonBlockingDelay(10ms);
+  wait_all_connected();
+  add_all_text(5);
+
+  // Verify models contents.
+  for (uint32_t main_index = 0; main_index < clients.size(); ++main_index) {
+    SCOPED_TRACE("Testing client with index: " + std::to_string(main_index));
+    const auto& current_lists_model = clients[main_index].GetModel();
+    const auto& local_host = current_lists_model.GetLocalHost();
+    const auto start_time = std::chrono::steady_clock::now();
+    for (uint32_t inner_client_index = 0; inner_client_index < kClientsCount;
+         ++inner_client_index) {
+      const std::deque<std::string>* text;
+      if (main_index == inner_client_index) {
+        text = &local_host.GetText();
+      } else {
+        auto* host = current_lists_model.GetRemoteHost(HostPublicId(inner_client_index + 1));
+        ASSERT_NE(host, nullptr);
+        text = &host->GetText();
+      }
+      while (text->size() < 5) {
+        NonBlockingDelay(5ms);
+        if (std::chrono::steady_clock::now() - start_time > 10s) {
+          ASSERT_TRUE(false) << "Timeout reached. Target index: " << main_index
+                             << " client index: " << inner_client_index
+                             << " size was: " << text->size();
+        }
+      }
+      for (uint32_t text_index = 0; text_index < 5; ++text_index) {
+        EXPECT_EQ((*text)[text_index],
+                  std::format("client_{}_text{}", inner_client_index + 1, 5 - text_index));
+      }
+    }
   }
 
-  clients[0].SimulateTemporaryDisconnectFromServer();
-  clients[0].WaitDisconnected();
-  clients[0].WaitConnected();
-  
-  // TODO: We have to add more clients interactions/disconects here, to ensure system stability.
   process.Stop();
   EXPECT_TRUE(process.WaitFinished(3000));
 }
