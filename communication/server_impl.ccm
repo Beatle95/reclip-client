@@ -133,6 +133,8 @@ ServerImpl::ServerImpl(ServerDelegate& delegate) : delegate_(&delegate) {
   reconnect_timer_.setInterval(0s);
   reconnect_timer_.setSingleShot(true);
   connect(&reconnect_timer_, &QTimer::timeout, this, &ServerImpl::ConnectImpl);
+
+  disconnect_timer_.setSingleShot(true);
   connect(&disconnect_timer_, &QTimer::timeout, this, &ServerImpl::DisconnectTimeout);
   // It is better if Connect will be handled in one place, so I don't call it in
   // constructor.
