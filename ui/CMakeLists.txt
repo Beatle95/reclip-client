@@ -25,6 +25,7 @@ target_link_libraries(
 target_sources(
     unit_tests PRIVATE
     content_window_unittest.cc
+    host_controller_unittest.cc
 )
 target_link_libraries(
     unit_tests PUBLIC

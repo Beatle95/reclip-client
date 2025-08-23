@@ -15,6 +15,7 @@ target_sources(
     observer.ccm
     observers_list.ccm
     scoped_observation.ccm
+    auto_reset.ccm
 )
 
 target_sources(

@@ -6,8 +6,6 @@
 
 namespace reclip {
 
-// TODO: Show text constraints.
-
 TextView::TextView(const QString& visible_text, QWidget* parent)
     : QWidget(parent) {
   setAttribute(Qt::WidgetAttribute::WA_StyledBackground);
@@ -16,6 +14,9 @@ TextView::TextView(const QString& visible_text, QWidget* parent)
   auto* layout = new QHBoxLayout(this);
   label_ = new QLabel(parent);
   label_->setText(visible_text);
+  label_->setWordWrap(false);
+  label_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+  label_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
   layout->addWidget(label_);
 }
 

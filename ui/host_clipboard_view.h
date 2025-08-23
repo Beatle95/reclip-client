@@ -9,6 +9,8 @@ namespace reclip {
 class HostClipboardView : public QWidget {
   Q_OBJECT
  public:
+  static void RegisterPrefs();
+
   explicit HostClipboardView(const QString& visible_name = {});
   void SetName(const QString& visible_name);
 

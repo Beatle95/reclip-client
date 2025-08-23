@@ -2,15 +2,19 @@ module;
 
 #include <QObject>
 #include <QWidget>
+#include <cstdint>
 #include <memory>
 #include <ranges>
+#include <string_view>
 
 #include "base/log.h"
 #include "ui/host_clipboard_view.h"
 
 export module ui.host_controller;
 
+import base.preferences;
 import base.observer_helper;
+import base.auto_reset;
 import core.host_model;
 
 namespace reclip {
@@ -23,6 +27,8 @@ export class HostControllerDelegate {
 
 export class HostController : public QObject, public HostModelObserver {
  public:
+  static void RegisterPrefs();
+
   HostController(HostModel* model, HostControllerDelegate* delegate, bool is_local_device = false);
 
   std::unique_ptr<QWidget> CreateView();
@@ -32,6 +38,9 @@ export class HostController : public QObject, public HostModelObserver {
   void OnTextPushed(const std::string& text) override;
   void OnTextPoped() override;
   void OnReset() override;
+
+  static QString SanitizeTextForTesting(const std::string& target, int64_t max_lines_in_text,
+                                        bool trim_text);
 
  private:
   void ElementClicked(int index);
@@ -47,7 +56,73 @@ export class HostController : public QObject, public HostModelObserver {
 
 namespace {
 const auto kEmptyNameReplacement = QStringLiteral("Unknown");
+constexpr std::string_view kTrimTextPrefName = "ui.host_controller.trim_text";
+constexpr std::string_view kMaxLinesCount = "ui.host_controller.max_text_view_lines_count";
+
+bool g_test_sanitize_text = false;
+
+std::pair<int64_t, int64_t> LineSeparatorsToIndexes(const QString& text, int64_t from_start,
+                                                    int64_t from_end) {
+  assert(from_start >= 0 && from_end >= 0);
+  int count = 0;
+  const auto it_start = std::ranges::find_if(text, [&](QChar c) {
+    if (c == '\n') {
+      return ++count == from_start;
+    }
+    return false;
+  });
+  assert(it_start != text.end());
+
+  count = 0;
+  const auto it_end = std::ranges::find_if(text.rbegin(), text.rend(), [&](QChar c) {
+    if (c == '\n') {
+      return ++count == from_end;
+    }
+    return false;
+  });
+  assert(it_end != text.rend());
+
+  return {std::distance(text.begin(), it_start), std::distance(text.begin(), it_end.base() - 1)};
+}
+
+QString SanitizeText(const std::string& target, int64_t max_lines_in_text, bool trim_text) {
+  QString text = QString::fromStdString(target);
+  if (trim_text) {
+    const auto size_before = text.size();
+    text = text.trimmed();
+    if (trim_text && text.size() != size_before) {
+      text.prepend(g_test_sanitize_text ? "@t\n" : QObject::tr("<blank symbols trimmed>\n"));
+    }
+  }
+
+  const auto max_lines_count = std::max(1ll, max_lines_in_text);
+  const auto cur_lines_count = text.count('\n') + 1;
+  if (cur_lines_count > max_lines_count) {
+    const int64_t lines_from_start = std::max(1ll, max_lines_count / 2);
+    const int64_t lines_at_end = std::max(1ll, max_lines_count - lines_from_start);
+    const auto [start, end] =
+        LineSeparatorsToIndexes(text, lines_from_start, lines_at_end);
+    assert(start <= end);
+    text = QStringLiteral("%1\n%2\n%3")
+               .arg(text.mid(0, start))
+               .arg((g_test_sanitize_text ? "@l" : QObject::tr("<some lines was skipped>")))
+               .arg(text.mid(end + 1));
+  }
+
+  return text;
+}
+
+QString SanitizeTextUsePrefs(const std::string& target) {
+  const auto& prefs = Preferences::GetInstance();
+  return SanitizeText(target, prefs.GetInt(kMaxLinesCount), prefs.GetBool(kTrimTextPrefName));
+}
 }  // namespace
+
+// static
+void HostController::RegisterPrefs() {
+  Preferences::GetInstance().RegisterBool(kTrimTextPrefName, true);
+  Preferences::GetInstance().RegisterInt(kMaxLinesCount, 8);
+}
 
 HostController::HostController(HostModel* model, HostControllerDelegate* delegate,
                                bool is_local_device)
@@ -70,10 +145,10 @@ std::unique_ptr<QWidget> HostController::CreateView() {
 
 void HostController::OnTextPushed(const std::string& text) {
   assert(view_);
-  view_->PushText(QString::fromStdString(text));
+  view_->PushText(SanitizeTextUsePrefs(text));
 }
 
-void HostController::OnTextPoped()  {
+void HostController::OnTextPoped() {
   assert(view_);
   view_->PopText();
 }
@@ -89,7 +164,7 @@ void HostController::OnReset() {
 
   view_->ClearText();
   for (const auto& text : std::ranges::reverse_view(model_->GetText())) {
-    view_->PushText(QString::fromStdString(text));
+    view_->PushText(SanitizeTextUsePrefs(text));
   }
 }
 
@@ -99,6 +174,13 @@ void HostController::ElementClicked(int index) {
     return;
   }
   delegate_->WriteTextToClipboard(model_->GetText()[index]);
+}
+
+// static
+QString HostController::SanitizeTextForTesting(const std::string& target, int64_t max_lines_in_text,
+                                               bool trim_text) {
+  AutoReset _(g_test_sanitize_text, true);
+  return SanitizeText(target, max_lines_in_text, trim_text);
 }
 
 }  // namespace reclip

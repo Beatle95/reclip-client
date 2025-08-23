@@ -5,6 +5,7 @@ module;
 #include <memory>
 
 #include "ui/content_window.h"
+#include "ui/host_clipboard_view.h"
 
 export module ui.content_window_controller;
 
@@ -54,6 +55,8 @@ export class ContentWindowController : public HostsListModelObserver,
 ContentWindowController::ContentWindowController(HostsListModel* model, Clipboard* clipboard)
     : model_(model), clipboard_(clipboard) {
   model_observation_.Reset(*this, *model_);
+  HostClipboardView::RegisterPrefs();
+  HostController::RegisterPrefs();
 }
 
 ContentWindowController::~ContentWindowController() = default;

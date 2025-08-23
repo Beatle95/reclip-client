@@ -3,17 +3,26 @@
 #include <QBoxLayout>
 #include <QLabel>
 #include <QScrollArea>
+#include <string_view>
 
 #include "ui/text_view.h"
 
-constexpr int kMinWidth = 320;
+import base.preferences;
+
+constexpr std::string_view kMinWidthPrefName = "ui.host_clipboard_view.min_width";
+constexpr int kDefaultMinWidth = 380;
 
 namespace reclip {
+
+// static
+void HostClipboardView::RegisterPrefs() {
+  Preferences::GetInstance().RegisterInt(kMinWidthPrefName, kDefaultMinWidth);
+}
 
 HostClipboardView::HostClipboardView(const QString& visible_name) {
   setAttribute(Qt::WidgetAttribute::WA_StyledBackground);
   setObjectName("HostClipboardView");
-  setMinimumWidth(kMinWidth);
+  setMinimumWidth(Preferences::GetInstance().GetInt(kMinWidthPrefName));
 
   auto* layout = new QVBoxLayout;
   layout->setAlignment(Qt::AlignTop);

@@ -1,0 +1,26 @@
+export module base.auto_reset;
+
+namespace reclip {
+
+export template <typename T>
+class AutoReset {
+ public:
+  AutoReset(T& target_ref, T new_value) : target_ref_(target_ref), initial_value_(target_ref) {
+    target_ref_ = new_value;
+  }
+
+  ~AutoReset() { target_ref_ = initial_value_; }
+
+  AutoReset(const AutoReset&) = delete;
+  AutoReset& operator=(const AutoReset&) = delete;
+  AutoReset(AutoReset&&) = delete;
+  AutoReset& operator=(AutoReset&&) = delete;
+
+  T initial_value() const { return initial_value_; }
+
+ private:
+  T& target_ref_;
+  T initial_value_;
+};
+
+}  // namespace reclip
